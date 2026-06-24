@@ -7,4 +7,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://simply-south-ops-eight.vercel.app',
+        changeOrigin: true,
+        secure: true,
+      }
+    }
+  }
 })
