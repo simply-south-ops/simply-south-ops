@@ -76,28 +76,28 @@ export default function Events() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Events</h1>
         <button
           onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm) }}
           className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
         >
-          <Plus size={16} /> Add Event
+          <Plus size={16} /> <span className="hidden sm:inline">Add Event</span>
         </button>
       </div>
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">{editId ? 'Edit Event' : 'New Event'}</h2>
               <button onClick={() => setShowForm(false)}><X size={20} /></button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input
-                className="col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                className="sm:col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 placeholder="Event name *"
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
@@ -166,7 +166,7 @@ export default function Events() {
                 value={form.balance_due}
                 onChange={e => setForm({ ...form, balance_due: e.target.value })}
               />
-             <label className="flex items-center gap-2 text-sm text-gray-600">
+              <label className="flex items-center gap-2 text-sm text-gray-600">
                 <input
                   type="checkbox"
                   checked={form.is_paid}
@@ -183,7 +183,7 @@ export default function Events() {
                 Internal event (not a client booking)
               </label>
               <textarea
-                className="col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                className="sm:col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 placeholder="Notes"
                 rows={3}
                 value={form.notes}
@@ -208,61 +208,105 @@ export default function Events() {
         </div>
       )}
 
-      {/* Events Table */}
       {loading ? (
         <p className="text-gray-500 text-sm">Loading...</p>
       ) : events.length === 0 ? (
         <p className="text-gray-500 text-sm">No events yet. Add your first event.</p>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Event</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Client</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Date</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Type</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Quote</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Paid</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {events.map(event => (
-                <tr key={event.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{event.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{event.client_name || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {event.event_date ? new Date(event.event_date).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{event.event_type || '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[event.status]}`}>
-                      {event.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">${event.quote_amount || '0'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${event.is_paid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {event.is_paid ? 'Paid' : 'Pending'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => handleEdit(event)} className="text-gray-400 hover:text-gray-600">
-                        <Pencil size={15} />
-                      </button>
-                      <button onClick={() => handleDelete(event.id)} className="text-gray-400 hover:text-rose-600">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
+        <>
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {events.map(event => (
+              <div key={event.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">{event.name}</p>
+                    <p className="text-xs text-gray-500">{event.client_name || '—'}</p>
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[event.status]}`}>
+                    {event.status.replace('_', ' ')}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mb-1">
+                  {event.event_date ? new Date(event.event_date).toLocaleDateString() : '—'} · {event.event_type || '—'}
+                </p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-sm font-bold text-gray-900">${event.quote_amount || '0'}</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${event.is_paid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {event.is_paid ? 'Paid' : 'Pending'}
+                  </span>
+                </div>
+                {event.is_internal && (
+                  <span className="inline-block mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                    Internal
+                  </span>
+                )}
+                <div className="flex items-center gap-3 pt-2 mt-2 border-t border-gray-100">
+                  <button onClick={() => handleEdit(event)} className="text-xs text-gray-500 font-medium">Edit</button>
+                  <button onClick={() => handleDelete(event.id)} className="text-xs text-rose-600 font-medium">Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Event</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Client</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Date</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Type</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Quote</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Paid</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {events.map(event => (
+                  <tr key={event.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {event.name}
+                      {event.is_internal && (
+                        <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                          Internal
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{event.client_name || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {event.event_date ? new Date(event.event_date).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{event.event_type || '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[event.status]}`}>
+                        {event.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">${event.quote_amount || '0'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${event.is_paid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                        {event.is_paid ? 'Paid' : 'Pending'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button onClick={() => handleEdit(event)} className="text-gray-400 hover:text-gray-600">
+                          <Pencil size={15} />
+                        </button>
+                        <button onClick={() => handleDelete(event.id)} className="text-gray-400 hover:text-rose-600">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )

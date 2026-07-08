@@ -91,7 +91,6 @@ export default function Invoices() {
   const generatePDF = (invoice) => {
     const doc = new jsPDF()
 
-    // Header
     doc.setFontSize(22)
     doc.setTextColor(190, 30, 45)
     doc.text('Simply South Events', 14, 22)
@@ -110,7 +109,6 @@ export default function Invoices() {
     doc.text(`Date: ${invoice.issued_date ? new Date(invoice.issued_date).toLocaleDateString() : ''}`, 140, 36)
     doc.text(`Status: ${invoice.status.toUpperCase()}`, 140, 42)
 
-    // Client info
     doc.setFontSize(11)
     doc.setTextColor(30)
     doc.text('Bill To:', 14, 48)
@@ -120,12 +118,10 @@ export default function Invoices() {
     doc.text(invoice.client_phone || '', 14, 61)
     doc.text(invoice.client_email || '', 14, 67)
 
-    // Event info
     doc.setFontSize(10)
     doc.setTextColor(80)
     doc.text(`Event: ${invoice.event_name || '—'}`, 14, 78)
 
-    // Line items table
     autoTable(doc, {
       startY: 85,
       head: [['Description', 'Amount']],
@@ -139,7 +135,6 @@ export default function Invoices() {
       styles: { fontSize: 10 }
     })
 
-    // Footer
     const pageHeight = doc.internal.pageSize.height
     doc.setFontSize(9)
     doc.setTextColor(150)
@@ -155,25 +150,25 @@ export default function Invoices() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
         <button
           onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm) }}
           className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
         >
-          <Plus size={16} /> New Invoice
+          <Plus size={16} /> <span className="hidden sm:inline">New Invoice</span>
         </button>
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">{editId ? 'Edit Invoice' : 'New Invoice'}</h2>
               <button onClick={() => setShowForm(false)}><X size={20} /></button>
             </div>
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               <select
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 value={form.event_id}
@@ -205,7 +200,6 @@ export default function Invoices() {
               </select>
             </div>
 
-            {/* Line Items */}
             <div className="mb-3">
               <p className="text-sm font-medium text-gray-700 mb-2">Line Items</p>
               {form.line_items.map((item, index) => (
@@ -218,7 +212,7 @@ export default function Invoices() {
                   />
                   <input
                     type="number"
-                    className="w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    className="w-24 sm:w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm"
                     placeholder="Amount"
                     value={item.amount}
                     onChange={e => updateLineItem(index, 'amount', e.target.value)}
@@ -265,54 +259,86 @@ export default function Invoices() {
       ) : invoices.length === 0 ? (
         <p className="text-gray-500 text-sm">No invoices yet.</p>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Invoice #</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Event</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Client</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Date</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Total</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {invoices.map(invoice => (
-                <tr key={invoice.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{invoice.invoice_number}</td>
-                  <td className="px-4 py-3 text-gray-600">{invoice.event_name || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{invoice.client_name || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {invoice.issued_date ? new Date(invoice.issued_date).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-4 py-3 font-semibold text-gray-900">
-                    ${parseFloat(invoice.total_amount || 0).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[invoice.status]}`}>
-                      {invoice.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => generatePDF(invoice)} className="text-gray-400 hover:text-rose-600" title="Download PDF">
-                        <FileDown size={15} />
-                      </button>
-                      <button onClick={() => handleEdit(invoice)} className="text-gray-400 hover:text-gray-600">
-                        <Pencil size={15} />
-                      </button>
-                      <button onClick={() => handleDelete(invoice.id)} className="text-gray-400 hover:text-rose-600">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
+        <>
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {invoices.map(invoice => (
+              <div key={invoice.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">{invoice.invoice_number}</p>
+                    <p className="text-xs text-gray-500">{invoice.event_name || '—'}</p>
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[invoice.status]}`}>
+                    {invoice.status}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mb-1">{invoice.client_name || '—'}</p>
+                <p className="text-xs text-gray-500 mb-2">
+                  {invoice.issued_date ? new Date(invoice.issued_date).toLocaleDateString() : '—'}
+                </p>
+                <p className="text-sm font-bold text-gray-900 mb-2">
+                  ${parseFloat(invoice.total_amount || 0).toFixed(2)}
+                </p>
+                <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                  <button onClick={() => generatePDF(invoice)} className="text-xs text-rose-600 font-medium">Download PDF</button>
+                  <button onClick={() => handleEdit(invoice)} className="text-xs text-gray-500 font-medium">Edit</button>
+                  <button onClick={() => handleDelete(invoice.id)} className="text-xs text-rose-600 font-medium">Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Invoice #</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Event</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Client</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Date</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Total</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {invoices.map(invoice => (
+                  <tr key={invoice.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{invoice.invoice_number}</td>
+                    <td className="px-4 py-3 text-gray-600">{invoice.event_name || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{invoice.client_name || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {invoice.issued_date ? new Date(invoice.issued_date).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-gray-900">
+                      ${parseFloat(invoice.total_amount || 0).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[invoice.status]}`}>
+                        {invoice.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button onClick={() => generatePDF(invoice)} className="text-gray-400 hover:text-rose-600" title="Download PDF">
+                          <FileDown size={15} />
+                        </button>
+                        <button onClick={() => handleEdit(invoice)} className="text-gray-400 hover:text-gray-600">
+                          <Pencil size={15} />
+                        </button>
+                        <button onClick={() => handleDelete(invoice.id)} className="text-gray-400 hover:text-rose-600">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )
