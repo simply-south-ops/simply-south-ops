@@ -4,7 +4,7 @@ import { Plus, Pencil, Trash2, X } from 'lucide-react'
 const emptyForm = {
   name: '', client_id: '', event_date: '', venue: '', event_type: '',
   status: 'enquiry', quote_amount: '', deposit_paid: '', balance_due: '',
-  is_paid: false, payment_method: '', notes: ''
+  is_paid: false, payment_method: '', notes: '', is_internal: false
 }
 
 const statusColors = {
@@ -59,7 +59,7 @@ export default function Events() {
       venue: event.venue, event_type: event.event_type, status: event.status,
       quote_amount: event.quote_amount, deposit_paid: event.deposit_paid,
       balance_due: event.balance_due, is_paid: event.is_paid,
-      payment_method: event.payment_method, notes: event.notes
+      payment_method: event.payment_method, notes: event.notes, is_internal: event.is_internal
     })
     setEditId(event.id)
     setShowForm(true)
@@ -166,13 +166,21 @@ export default function Events() {
                 value={form.balance_due}
                 onChange={e => setForm({ ...form, balance_due: e.target.value })}
               />
-              <label className="flex items-center gap-2 text-sm text-gray-600">
+             <label className="flex items-center gap-2 text-sm text-gray-600">
                 <input
                   type="checkbox"
                   checked={form.is_paid}
                   onChange={e => setForm({ ...form, is_paid: e.target.checked })}
                 />
                 Fully paid
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={form.is_internal}
+                  onChange={e => setForm({ ...form, is_internal: e.target.checked })}
+                />
+                Internal event (not a client booking)
               </label>
               <textarea
                 className="col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm"

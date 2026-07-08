@@ -5,11 +5,11 @@ export default async function handler(req, res) {
     const { event_id } = req.query
     try {
       const query = event_id
-        ? `SELECT ps.*, e.name as event_name 
+        ? `SELECT ps.*, e.name as event_name, e.is_internal 
            FROM profit_splits ps
            LEFT JOIN events e ON ps.event_id = e.id
            WHERE ps.event_id = $1`
-        : `SELECT ps.*, e.name as event_name 
+        : `SELECT ps.*, e.name as event_name, e.is_internal 
            FROM profit_splits ps
            LEFT JOIN events e ON ps.event_id = e.id
            ORDER BY ps.created_at DESC`
