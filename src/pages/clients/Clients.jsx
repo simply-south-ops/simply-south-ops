@@ -51,20 +51,20 @@ export default function Clients() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
         <button
           onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm) }}
           className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
         >
-          <Plus size={16} /> Add Client
+          <Plus size={16} /> <span className="hidden sm:inline">Add Client</span>
         </button>
       </div>
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">{editId ? 'Edit Client' : 'New Client'}</h2>
@@ -115,45 +115,63 @@ export default function Clients() {
         </div>
       )}
 
-      {/* Clients Table */}
       {loading ? (
         <p className="text-gray-500 text-sm">Loading...</p>
       ) : clients.length === 0 ? (
         <p className="text-gray-500 text-sm">No clients yet. Add your first client.</p>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Name</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Phone</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Email</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Notes</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {clients.map(client => (
-                <tr key={client.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{client.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{client.phone || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{client.email || '—'}</td>
-                  <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{client.notes || '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => handleEdit(client)} className="text-gray-400 hover:text-gray-600">
-                        <Pencil size={15} />
-                      </button>
-                      <button onClick={() => handleDelete(client.id)} className="text-gray-400 hover:text-rose-600">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
+        <>
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {clients.map(client => (
+              <div key={client.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <p className="font-semibold text-gray-900 text-sm mb-1">{client.name}</p>
+                {client.phone && <p className="text-xs text-gray-500">{client.phone}</p>}
+                {client.email && <p className="text-xs text-gray-500">{client.email}</p>}
+                {client.notes && <p className="text-xs text-gray-400 mt-2">{client.notes}</p>}
+                <div className="flex items-center gap-3 pt-2 mt-2 border-t border-gray-100">
+                  <button onClick={() => handleEdit(client)} className="text-xs text-gray-500 font-medium">Edit</button>
+                  <button onClick={() => handleDelete(client.id)} className="text-xs text-rose-600 font-medium">Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Name</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Phone</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Email</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Notes</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {clients.map(client => (
+                  <tr key={client.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{client.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{client.phone || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{client.email || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{client.notes || '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button onClick={() => handleEdit(client)} className="text-gray-400 hover:text-gray-600">
+                          <Pencil size={15} />
+                        </button>
+                        <button onClick={() => handleDelete(client.id)} className="text-gray-400 hover:text-rose-600">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )

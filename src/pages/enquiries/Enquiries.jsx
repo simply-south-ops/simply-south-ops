@@ -72,34 +72,34 @@ export default function Enquiries() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Enquiries</h1>
         <button
           onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm) }}
           className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
         >
-          <Plus size={16} /> Add Enquiry
+          <Plus size={16} /> <span className="hidden sm:inline">Add Enquiry</span>
         </button>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
         {[
           { label: 'New', key: 'new', color: 'bg-blue-50 text-blue-700' },
           { label: 'Follow Up', key: 'follow_up', color: 'bg-yellow-50 text-yellow-700' },
           { label: 'Converted', key: 'converted', color: 'bg-green-50 text-green-700' },
           { label: 'Lost', key: 'lost', color: 'bg-red-50 text-red-700' },
         ].map(({ label, key, color }) => (
-          <div key={key} className={`rounded-xl p-4 ${color}`}>
-            <p className="text-2xl font-bold">{counts[key]}</p>
-            <p className="text-sm font-medium mt-1">{label}</p>
+          <div key={key} className={`rounded-xl p-3 md:p-4 ${color}`}>
+            <p className="text-xl md:text-2xl font-bold">{counts[key]}</p>
+            <p className="text-xs md:text-sm font-medium mt-1">{label}</p>
           </div>
         ))}
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">{editId ? 'Edit Enquiry' : 'New Enquiry'}</h2>
@@ -179,49 +179,75 @@ export default function Enquiries() {
       ) : enquiries.length === 0 ? (
         <p className="text-gray-500 text-sm">No enquiries yet.</p>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Client</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Phone</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Event Type</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Event Date</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Notes</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {enquiries.map(enquiry => (
-                <tr key={enquiry.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{enquiry.client_name}</td>
-                  <td className="px-4 py-3 text-gray-600">{enquiry.phone || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{enquiry.event_type || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {enquiry.event_date ? new Date(enquiry.event_date).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[enquiry.status]}`}>
-                      {enquiry.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{enquiry.notes || '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => handleEdit(enquiry)} className="text-gray-400 hover:text-gray-600">
-                        <Pencil size={15} />
-                      </button>
-                      <button onClick={() => handleDelete(enquiry.id)} className="text-gray-400 hover:text-rose-600">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
+        <>
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {enquiries.map(enquiry => (
+              <div key={enquiry.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="font-semibold text-gray-900 text-sm">{enquiry.client_name}</p>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[enquiry.status]}`}>
+                    {enquiry.status.replace('_', ' ')}
+                  </span>
+                </div>
+                {enquiry.phone && <p className="text-xs text-gray-500">{enquiry.phone}</p>}
+                <p className="text-xs text-gray-500 mb-1">
+                  {enquiry.event_type || '—'} · {enquiry.event_date ? new Date(enquiry.event_date).toLocaleDateString() : '—'}
+                </p>
+                {enquiry.notes && <p className="text-xs text-gray-400 mt-2">{enquiry.notes}</p>}
+                <div className="flex items-center gap-3 pt-2 mt-2 border-t border-gray-100">
+                  <button onClick={() => handleEdit(enquiry)} className="text-xs text-gray-500 font-medium">Edit</button>
+                  <button onClick={() => handleDelete(enquiry.id)} className="text-xs text-rose-600 font-medium">Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Client</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Phone</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Event Type</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Event Date</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Notes</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {enquiries.map(enquiry => (
+                  <tr key={enquiry.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{enquiry.client_name}</td>
+                    <td className="px-4 py-3 text-gray-600">{enquiry.phone || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{enquiry.event_type || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {enquiry.event_date ? new Date(enquiry.event_date).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[enquiry.status]}`}>
+                        {enquiry.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{enquiry.notes || '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button onClick={() => handleEdit(enquiry)} className="text-gray-400 hover:text-gray-600">
+                          <Pencil size={15} />
+                        </button>
+                        <button onClick={() => handleDelete(enquiry.id)} className="text-gray-400 hover:text-rose-600">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )
