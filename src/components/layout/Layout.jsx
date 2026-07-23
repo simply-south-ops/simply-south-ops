@@ -9,7 +9,6 @@ import {
   Users,
   ClipboardList,
   PieChart,
-  Clock,
   Menu,
   X
 } from 'lucide-react'
@@ -23,7 +22,6 @@ const navItems = [
   { to: '/clients', label: 'Clients', icon: Users },
   { to: '/enquiries', label: 'Enquiries', icon: ClipboardList },
   { to: '/profitsplit', label: 'Profit Split', icon: PieChart },
-  { to: '/labour', label: 'Labour', icon: Clock },
 ]
 
 export default function Layout() {

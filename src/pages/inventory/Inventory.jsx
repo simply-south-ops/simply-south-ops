@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Image } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Image, AlertCircle } from 'lucide-react'
 
 const emptyForm = {
-  name: '', category: '', purchase_date: '', cost: '',
+  name: '', category: '', quantity: '1', price_per_unit: '', cost: '',
   condition: 'good', photo_url: '', notes: ''
 }
 
@@ -15,6 +15,7 @@ export default function Inventory() {
   const [editId, setEditId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [manualTotal, setManualTotal] = useState(false)
 
   const fetchItems = async () => {
     const res = await fetch('/api/inventory')
@@ -41,6 +42,17 @@ export default function Inventory() {
     setUploading(false)
   }
 
+  // auto-calc total cost from price_per_unit x quantity, unless user manually overrides
+  useEffect(() => {
+    if (!manualTotal) {
+      const qty = parseFloat(form.quantity) || 0
+      const price = parseFloat(form.price_per_unit) || 0
+      if (form.price_per_unit !== '') {
+        setForm(f => ({ ...f, cost: (qty * price).toFixed(2) }))
+      }
+    }
+  }, [form.quantity, form.price_per_unit, manualTotal])
+
   const handleSubmit = async () => {
     if (!form.name) return alert('Item name is required')
     const method = editId ? 'PUT' : 'POST'
@@ -51,6 +63,7 @@ export default function Inventory() {
       body: JSON.stringify(body)
     })
     setForm(emptyForm)
+    setManualTotal(false)
     setEditId(null)
     setShowForm(false)
     fetchItems()
@@ -59,10 +72,12 @@ export default function Inventory() {
   const handleEdit = (item) => {
     setForm({
       name: item.name, category: item.category,
-      purchase_date: item.purchase_date?.split('T')[0],
+      quantity: item.quantity || '1',
+      price_per_unit: item.price_per_unit || '',
       cost: item.cost, condition: item.condition,
       photo_url: item.photo_url, notes: item.notes
     })
+    setManualTotal(true)
     setEditId(item.id)
     setShowForm(true)
   }
@@ -84,10 +99,11 @@ export default function Inventory() {
   }
 
   const totalValue = items.reduce((sum, i) => sum + parseFloat(i.cost || 0), 0)
+  const missingPriceCount = items.filter(i => !i.cost || parseFloat(i.cost) === 0).length
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 md:p-8">
+      <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -95,15 +111,23 @@ export default function Inventory() {
           </p>
         </div>
         <button
-          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm) }}
+          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); setManualTotal(false) }}
           className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
         >
-          <Plus size={16} /> Add Item
+          <Plus size={16} /> <span className="hidden sm:inline">Add Item</span>
         </button>
       </div>
 
+      {missingPriceCount > 0 && (
+        <div className="flex items-center gap-2 bg-amber-50 text-amber-700 rounded-lg px-3 py-2 text-xs mb-6 mt-3">
+          <AlertCircle size={14} />
+          {missingPriceCount} item{missingPriceCount !== 1 ? 's' : ''} missing a price — total value shown is an undercount
+        </div>
+      )}
+      {missingPriceCount === 0 && <div className="mb-6" />}
+
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">{editId ? 'Edit Item' : 'New Item'}</h2>
@@ -124,26 +148,42 @@ export default function Inventory() {
               />
               <div className="grid grid-cols-2 gap-3">
                 <input
-                  type="date"
+                  type="number"
+                  min="0"
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  value={form.purchase_date}
-                  onChange={e => setForm({ ...form, purchase_date: e.target.value })}
+                  placeholder="Quantity"
+                  value={form.quantity}
+                  onChange={e => setForm({ ...form, quantity: e.target.value })}
+                />
+                <select
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  value={form.condition}
+                  onChange={e => setForm({ ...form, condition: e.target.value })}
+                >
+                  {conditions.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="number"
+                  step="0.01"
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  placeholder="Price / piece (optional)"
+                  value={form.price_per_unit}
+                  onChange={e => { setManualTotal(false); setForm({ ...form, price_per_unit: e.target.value }) }}
                 />
                 <input
                   type="number"
+                  step="0.01"
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  placeholder="Cost"
+                  placeholder="Total price (optional)"
                   value={form.cost}
-                  onChange={e => setForm({ ...form, cost: e.target.value })}
+                  onChange={e => { setManualTotal(true); setForm({ ...form, cost: e.target.value }) }}
                 />
               </div>
-              <select
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                value={form.condition}
-                onChange={e => setForm({ ...form, condition: e.target.value })}
-              >
-                {conditions.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-              </select>
+              <p className="text-xs text-gray-400 -mt-1">
+                Leave prices blank if unknown — total auto-fills from price/piece × quantity, or enter total directly.
+              </p>
 
               {/* Photo upload */}
               <div className="border border-dashed border-gray-300 rounded-lg p-4 text-center">
@@ -227,15 +267,18 @@ export default function Inventory() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between mt-3">
-                  <span className="text-sm font-semibold text-gray-900">${parseFloat(item.cost || 0).toFixed(2)}</span>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleEdit(item)} className="text-gray-400 hover:text-gray-600">
-                      <Pencil size={15} />
-                    </button>
-                    <button onClick={() => handleDelete(item.id)} className="text-gray-400 hover:text-rose-600">
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+                  <span className="text-xs text-gray-500">Qty: {item.quantity || 1}</span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {item.cost ? `$${parseFloat(item.cost).toFixed(2)}` : 'No price'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-3">
+                  <button onClick={() => handleEdit(item)} className="text-gray-400 hover:text-gray-600">
+                    <Pencil size={15} />
+                  </button>
+                  <button onClick={() => handleDelete(item.id)} className="text-gray-400 hover:text-rose-600">
+                    <Trash2 size={15} />
+                  </button>
                 </div>
                 {item.notes && <p className="text-xs text-gray-400 mt-2">{item.notes}</p>}
               </div>

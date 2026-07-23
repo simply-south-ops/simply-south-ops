@@ -8,7 +8,6 @@ import Invoices from './pages/invoices/Invoices'
 import Clients from './pages/clients/Clients'
 import Enquiries from './pages/enquiries/Enquiries'
 import ProfitSplit from './pages/profitsplit/ProfitSplit'
-import Labour from './pages/labour/Labour'
 
 export default function App() {
   return (
@@ -22,7 +21,6 @@ export default function App() {
         <Route path="clients" element={<Clients />} />
         <Route path="enquiries" element={<Enquiries />} />
         <Route path="profitsplit" element={<ProfitSplit />} />
-        <Route path="labour" element={<Labour />} />
       </Route>
     </Routes>
   )
