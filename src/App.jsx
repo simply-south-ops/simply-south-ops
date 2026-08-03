@@ -8,6 +8,7 @@ import Invoices from './pages/invoices/Invoices'
 import Clients from './pages/clients/Clients'
 import Enquiries from './pages/enquiries/Enquiries'
 import ProfitSplit from './pages/profitsplit/ProfitSplit'
+import Reimbursements from './pages/reimbursements/Reimbursements'
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="clients" element={<Clients />} />
         <Route path="enquiries" element={<Enquiries />} />
         <Route path="profitsplit" element={<ProfitSplit />} />
+        <Route path="reimbursements" element={<Reimbursements />} />
       </Route>
     </Routes>
   )
