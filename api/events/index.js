@@ -16,17 +16,32 @@ export default async function handler(req, res) {
   }
 
   else if (req.method === 'POST') {
-    const { name, client_id, event_date, venue, event_type, status, quote_amount, deposit_paid, balance_due, is_paid, payment_method, notes, is_internal } = req.body
+    const { name, client_id, event_date, venue, event_type, status, quote_amount, deposit_paid, balance_due, is_paid, payment_method, notes, is_internal, source_enquiry_id } = req.body
+    const client = await pool.connect()
     try {
-      const result = await pool.query(
+      await client.query('BEGIN')
+
+      const result = await client.query(
         `INSERT INTO events 
         (name, client_id, event_date, venue, event_type, status, quote_amount, deposit_paid, balance_due, is_paid, payment_method, notes, is_internal) 
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
         [name, client_id, event_date, venue, event_type, status, quote_amount, deposit_paid, balance_due, is_paid, payment_method, notes, is_internal || false]
       )
+
+      if (source_enquiry_id) {
+        await client.query(
+          `UPDATE enquiries SET status='converted' WHERE id=$1`,
+          [source_enquiry_id]
+        )
+      }
+
+      await client.query('COMMIT')
       res.status(201).json(result.rows[0])
     } catch (err) {
+      await client.query('ROLLBACK')
       res.status(500).json({ error: err.message })
+    } finally {
+      client.release()
     }
   }
 
