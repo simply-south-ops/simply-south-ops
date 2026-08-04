@@ -11,6 +11,19 @@ const emptyForm = {
   line_items: [{ description: '', amount: '' }]
 }
 
+const LOGO_URL = 'https://res.cloudinary.com/deytyopnc/image/upload/v1785812887/simply-south-logo_z8m6l8.png'
+
+async function getLogoDataUrl() {
+  const res = await fetch(LOGO_URL)
+  const blob = await res.blob()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
 export default function Invoices() {
   const [invoices, setInvoices] = useState([])
   const [events, setEvents] = useState([])
@@ -18,6 +31,7 @@ export default function Invoices() {
   const [form, setForm] = useState(emptyForm)
   const [editId, setEditId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [generatingPdf, setGeneratingPdf] = useState(null)
 
   const fetchAll = async () => {
     const [invRes, evRes] = await Promise.all([
@@ -88,59 +102,70 @@ export default function Invoices() {
     fetchAll()
   }
 
-  const generatePDF = (invoice) => {
-    const doc = new jsPDF()
+  const generatePDF = async (invoice) => {
+    setGeneratingPdf(invoice.id)
+    try {
+      const doc = new jsPDF()
+      const logoDataUrl = await getLogoDataUrl()
 
-    doc.setFontSize(22)
-    doc.setTextColor(190, 30, 45)
-    doc.text('Simply South Events', 14, 22)
+      doc.addImage(logoDataUrl, 'PNG', 14, 10, 28, 28)
 
-    doc.setFontSize(10)
-    doc.setTextColor(100)
-    doc.text('simplysouthevents@gmail.com', 14, 30)
+      doc.setFontSize(18)
+      doc.setTextColor(30)
+      doc.text('Simply South Events', 48, 22)
 
-    doc.setFontSize(16)
-    doc.setTextColor(30)
-    doc.text('INVOICE', 160, 22)
+      doc.setFontSize(9)
+      doc.setTextColor(120)
+      doc.text('simplysouthevents@gmail.com', 48, 28)
 
-    doc.setFontSize(10)
-    doc.setTextColor(80)
-    doc.text(`Invoice #: ${invoice.invoice_number}`, 140, 30)
-    doc.text(`Date: ${invoice.issued_date ? new Date(invoice.issued_date).toLocaleDateString() : ''}`, 140, 36)
-    doc.text(`Status: ${invoice.status.toUpperCase()}`, 140, 42)
+      doc.setFontSize(16)
+      doc.setTextColor(30)
+      doc.text('INVOICE', 160, 20)
 
-    doc.setFontSize(11)
-    doc.setTextColor(30)
-    doc.text('Bill To:', 14, 48)
-    doc.setFontSize(10)
-    doc.setTextColor(80)
-    doc.text(invoice.client_name || '—', 14, 55)
-    doc.text(invoice.client_phone || '', 14, 61)
-    doc.text(invoice.client_email || '', 14, 67)
+      doc.setFontSize(10)
+      doc.setTextColor(80)
+      doc.text(`Invoice #: ${invoice.invoice_number}`, 140, 28)
+      doc.text(`Date: ${invoice.issued_date ? new Date(invoice.issued_date).toLocaleDateString() : ''}`, 140, 34)
+      doc.text(`Status: ${invoice.status.toUpperCase()}`, 140, 40)
 
-    doc.setFontSize(10)
-    doc.setTextColor(80)
-    doc.text(`Event: ${invoice.event_name || '—'}`, 14, 78)
+      doc.setFontSize(11)
+      doc.setTextColor(30)
+      doc.text('Bill To:', 14, 48)
+      doc.setFontSize(10)
+      doc.setTextColor(80)
+      doc.text(invoice.client_name || '—', 14, 55)
+      doc.text(invoice.client_phone || '', 14, 61)
+      doc.text(invoice.client_email || '', 14, 67)
 
-    autoTable(doc, {
-      startY: 85,
-      head: [['Description', 'Amount']],
-      body: (invoice.line_items || []).map(item => [
-        item.description,
-        `$${parseFloat(item.amount || 0).toFixed(2)}`
-      ]),
-      foot: [['Total', `$${parseFloat(invoice.total_amount || 0).toFixed(2)}`]],
-      headStyles: { fillColor: [190, 30, 45] },
-      footStyles: { fillColor: [240, 240, 240], textColor: [30, 30, 30], fontStyle: 'bold' },
-      styles: { fontSize: 10 }
-    })
+      doc.setFontSize(10)
+      doc.setTextColor(80)
+      doc.text(`Event: ${invoice.event_name || '—'}`, 14, 78)
 
-    const pageHeight = doc.internal.pageSize.height
-    doc.setFontSize(9)
-    doc.setTextColor(150)
-    doc.text('Thank you for choosing Simply South Events!', 14, pageHeight - 15)
+      autoTable(doc, {
+        startY: 85,
+        head: [['Description', 'Amount']],
+        body: (invoice.line_items || []).map(item => [
+          item.description,
+          `$${parseFloat(item.amount || 0).toFixed(2)}`
+        ]),
+        foot: [['Total', `$${parseFloat(invoice.total_amount || 0).toFixed(2)}`]],
+        headStyles: { fillColor: [190, 30, 45] },
+        footStyles: { fillColor: [240, 240, 240], textColor: [30, 30, 30], fontStyle: 'bold' },
+        styles: { fontSize: 10 }
+      })
 
-    doc.save(`invoice-${invoice.invoice_number}.pdf`)
+      const pageHeight = doc.internal.pageSize.height
+      doc.setFontSize(9)
+      doc.setTextColor(150)
+      doc.text('Thank you for choosing Simply South Events!', 14, pageHeight - 15)
+
+      doc.save(`invoice-${invoice.invoice_number}.pdf`)
+    } catch (err) {
+      alert('Could not load logo for PDF — check your connection and try again.')
+      console.error(err)
+    } finally {
+      setGeneratingPdf(null)
+    }
   }
 
   const statusColors = {
@@ -281,7 +306,13 @@ export default function Invoices() {
                   ${parseFloat(invoice.total_amount || 0).toFixed(2)}
                 </p>
                 <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                  <button onClick={() => generatePDF(invoice)} className="text-xs text-rose-600 font-medium">Download PDF</button>
+                  <button
+                    onClick={() => generatePDF(invoice)}
+                    disabled={generatingPdf === invoice.id}
+                    className="text-xs text-rose-600 font-medium disabled:opacity-50"
+                  >
+                    {generatingPdf === invoice.id ? 'Generating...' : 'Download PDF'}
+                  </button>
                   <button onClick={() => handleEdit(invoice)} className="text-xs text-gray-500 font-medium">Edit</button>
                   <button onClick={() => handleDelete(invoice.id)} className="text-xs text-rose-600 font-medium">Delete</button>
                 </div>
@@ -322,7 +353,12 @@ export default function Invoices() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-end">
-                        <button onClick={() => generatePDF(invoice)} className="text-gray-400 hover:text-rose-600" title="Download PDF">
+                        <button
+                          onClick={() => generatePDF(invoice)}
+                          disabled={generatingPdf === invoice.id}
+                          className="text-gray-400 hover:text-rose-600 disabled:opacity-50"
+                          title="Download PDF"
+                        >
                           <FileDown size={15} />
                         </button>
                         <button onClick={() => handleEdit(invoice)} className="text-gray-400 hover:text-gray-600">
