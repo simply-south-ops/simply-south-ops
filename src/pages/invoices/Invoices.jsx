@@ -108,41 +108,45 @@ export default function Invoices() {
       const doc = new jsPDF()
       const logoDataUrl = await getLogoDataUrl()
 
-      doc.addImage(logoDataUrl, 'PNG', 14, 10, 28, 28)
+      const pageWidth = doc.internal.pageSize.width
+      const logoSize = 24
+      doc.addImage(logoDataUrl, 'PNG', (pageWidth - logoSize) / 2, 10, logoSize, logoSize)
 
-      doc.setFontSize(18)
-      doc.setTextColor(30)
-      doc.text('Simply South Events', 48, 22)
+      const headerY = 44
 
-      doc.setFontSize(9)
-      doc.setTextColor(120)
-      doc.text('simplysouthevents@gmail.com', 48, 28)
+      doc.setFontSize(22)
+      doc.setTextColor(190, 30, 45)
+      doc.text('Simply South Events', 14, headerY)
+
+      doc.setFontSize(10)
+      doc.setTextColor(100)
+      doc.text('simplysouthevents@gmail.com', 14, headerY + 8)
 
       doc.setFontSize(16)
       doc.setTextColor(30)
-      doc.text('INVOICE', 160, 20)
+      doc.text('INVOICE', 160, headerY)
 
       doc.setFontSize(10)
       doc.setTextColor(80)
-      doc.text(`Invoice #: ${invoice.invoice_number}`, 140, 28)
-      doc.text(`Date: ${invoice.issued_date ? new Date(invoice.issued_date).toLocaleDateString() : ''}`, 140, 34)
-      doc.text(`Status: ${invoice.status.toUpperCase()}`, 140, 40)
+      doc.text(`Invoice #: ${invoice.invoice_number}`, 140, headerY + 8)
+      doc.text(`Date: ${invoice.issued_date ? new Date(invoice.issued_date).toLocaleDateString() : ''}`, 140, headerY + 14)
+      doc.text(`Status: ${invoice.status.toUpperCase()}`, 140, headerY + 20)
 
       doc.setFontSize(11)
       doc.setTextColor(30)
-      doc.text('Bill To:', 14, 48)
+      doc.text('Bill To:', 14, headerY + 26)
       doc.setFontSize(10)
       doc.setTextColor(80)
-      doc.text(invoice.client_name || '—', 14, 55)
-      doc.text(invoice.client_phone || '', 14, 61)
-      doc.text(invoice.client_email || '', 14, 67)
+      doc.text(invoice.client_name || '—', 14, headerY + 33)
+      doc.text(invoice.client_phone || '', 14, headerY + 39)
+      doc.text(invoice.client_email || '', 14, headerY + 45)
 
       doc.setFontSize(10)
       doc.setTextColor(80)
-      doc.text(`Event: ${invoice.event_name || '—'}`, 14, 78)
+      doc.text(`Event: ${invoice.event_name || '—'}`, 14, headerY + 56)
 
       autoTable(doc, {
-        startY: 85,
+        startY: headerY + 63,
         head: [['Description', 'Amount']],
         body: (invoice.line_items || []).map(item => [
           item.description,
