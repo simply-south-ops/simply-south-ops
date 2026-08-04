@@ -1,4 +1,5 @@
 import pool from '../db.js'
+import { recalculateProfitSplit } from '../lib/profit-calc.js'
 
 const toNullIfEmpty = (val) => (val === '' || val === undefined ? null : val)
 
@@ -52,6 +53,8 @@ export default async function handler(req, res) {
       }
 
       await client.query('COMMIT')
+
+      await recalculateProfitSplit(pool, result.rows[0].id)
       res.status(201).json(result.rows[0])
     } catch (err) {
       await client.query('ROLLBACK')
@@ -86,6 +89,7 @@ export default async function handler(req, res) {
           id
         ]
       )
+      await recalculateProfitSplit(pool, id)
       res.status(200).json(result.rows[0])
     } catch (err) {
       res.status(500).json({ error: err.message })
