@@ -1,5 +1,7 @@
 import pool from '../db.js'
 
+const toNullIfEmpty = (val) => (val === '' || val === undefined ? null : val)
+
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
@@ -25,7 +27,21 @@ export default async function handler(req, res) {
         `INSERT INTO events 
         (name, client_id, event_date, venue, event_type, status, quote_amount, deposit_paid, balance_due, is_paid, payment_method, notes, is_internal) 
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-        [name, client_id, event_date, venue, event_type, status, quote_amount, deposit_paid, balance_due, is_paid, payment_method, notes, is_internal || false]
+        [
+          name,
+          toNullIfEmpty(client_id),
+          toNullIfEmpty(event_date),
+          venue,
+          event_type,
+          status,
+          toNullIfEmpty(quote_amount),
+          toNullIfEmpty(deposit_paid),
+          toNullIfEmpty(balance_due),
+          is_paid,
+          payment_method,
+          notes,
+          is_internal || false
+        ]
       )
 
       if (source_enquiry_id) {
@@ -53,7 +69,22 @@ export default async function handler(req, res) {
         name=$1, client_id=$2, event_date=$3, venue=$4, event_type=$5, status=$6, 
         quote_amount=$7, deposit_paid=$8, balance_due=$9, is_paid=$10, payment_method=$11, notes=$12, is_internal=$13
         WHERE id=$14 RETURNING *`,
-        [name, client_id, event_date, venue, event_type, status, quote_amount, deposit_paid, balance_due, is_paid, payment_method, notes, is_internal || false, id]
+        [
+          name,
+          toNullIfEmpty(client_id),
+          toNullIfEmpty(event_date),
+          venue,
+          event_type,
+          status,
+          toNullIfEmpty(quote_amount),
+          toNullIfEmpty(deposit_paid),
+          toNullIfEmpty(balance_due),
+          is_paid,
+          payment_method,
+          notes,
+          is_internal || false,
+          id
+        ]
       )
       res.status(200).json(result.rows[0])
     } catch (err) {
