@@ -128,7 +128,7 @@ export default function Invoices() {
 
       doc.setFontSize(10)
       doc.setTextColor(80)
-      doc.text(`Invoice #: ${invoice.invoice_number}`, 140, headerY + 4)
+      doc.text(`Invoice #: ${invoice.invoice_number}`, 140, headerY + 8)
       doc.text(`Date: ${invoice.issued_date ? new Date(invoice.issued_date).toLocaleDateString() : ''}`, 140, headerY + 14)
       doc.text(`Status: ${invoice.status.toUpperCase()}`, 140, headerY + 20)
 
