@@ -124,7 +124,7 @@ export default function Invoices() {
 
       doc.setFontSize(16)
       doc.setTextColor(30)
-      doc.text('INVOICE', 160, headerY + 2)
+      doc.text('INVOICE', 160, headerY - 2)
 
       doc.setFontSize(10)
       doc.setTextColor(80)
