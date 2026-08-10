@@ -306,7 +306,7 @@ const statusColors = {
                     <p className="text-xs text-gray-500">{invoice.event_name || '—'}</p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[invoice.status]}`}>
-                    {invoice.status}
+                   {invoice.status.replace('_', ' ')}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mb-1">{invoice.client_name || '—'}</p>
@@ -359,7 +359,7 @@ const statusColors = {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[invoice.status]}`}>
-                        {invoice.status}
+                        {invoice.status.replace('_', ' ')}
                       </span>
                     </td>
                     <td className="px-4 py-3">
