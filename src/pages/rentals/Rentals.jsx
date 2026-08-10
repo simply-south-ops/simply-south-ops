@@ -34,15 +34,23 @@ export default function Rentals() {
   const [shortageConfirmed, setShortageConfirmed] = useState(false)
   const [manualTotal, setManualTotal] = useState(false)
 
+  // rental-specific expense tracking, shown only when editing an existing rental
+  const [rentalExpenses, setRentalExpenses] = useState([])
+  const [users, setUsers] = useState([])
+  const [expenseForm, setExpenseForm] = useState({ paid_by: '', category: 'delivery', amount: '', date: '', description: '' })
+  const [editingExpenseId, setEditingExpenseId] = useState(null)
+
   const fetchAll = async () => {
-    const [rRes, rtRes, invRes] = await Promise.all([
+    const [rRes, rtRes, invRes, usRes] = await Promise.all([
       fetch('/api/rental-system?resource=rentals'),
       fetch('/api/rental-system?resource=renters'),
-      fetch('/api/inventory')
+      fetch('/api/inventory'),
+      fetch('/api/users')
     ])
     setRentals(await rRes.json())
     setRenters(await rtRes.json())
     setInventory((await invRes.json()).filter(i => i.rentable))
+    setUsers(await usRes.json())
     setLoading(false)
   }
 
@@ -157,6 +165,45 @@ export default function Rentals() {
     fetchAll()
   }
 
+  const fetchRentalExpenses = async (rentalId) => {
+    const res = await fetch(`/api/rental-system?resource=rental-expenses&rental_id=${rentalId}`)
+    setRentalExpenses(await res.json())
+  }
+
+  const handleAddExpense = async () => {
+    if (!expenseForm.amount) return alert('Amount is required')
+    const method = editingExpenseId ? 'PUT' : 'POST'
+    const body = editingExpenseId
+      ? { resource: 'rental-expenses', ...expenseForm, id: editingExpenseId }
+      : { resource: 'rental-expenses', ...expenseForm, rental_id: editId }
+    await fetch('/api/rental-system?resource=rental-expenses', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    setExpenseForm({ paid_by: '', category: 'delivery', amount: '', date: '', description: '' })
+    setEditingExpenseId(null)
+    fetchRentalExpenses(editId)
+  }
+
+  const handleEditExpense = (exp) => {
+    setExpenseForm({
+      paid_by: exp.paid_by || '', category: exp.category, amount: exp.amount,
+      date: exp.date?.split('T')[0] || '', description: exp.description || ''
+    })
+    setEditingExpenseId(exp.id)
+  }
+
+  const handleDeleteExpense = async (id) => {
+    if (!confirm('Delete this expense?')) return
+    await fetch('/api/rental-system?resource=rental-expenses', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resource: 'rental-expenses', id })
+    })
+    fetchRentalExpenses(editId)
+  }
+
   const handleEdit = (rental) => {
     setForm({
       renter_id: rental.renter_id, new_renter_name: '', new_renter_phone: '', new_renter_email: '',
@@ -173,6 +220,7 @@ export default function Rentals() {
     setManualTotal(true)
     setEditId(rental.id)
     setShowForm(true)
+    fetchRentalExpenses(rental.id)
   }
 
   const handleDelete = async (id) => {
@@ -197,7 +245,7 @@ export default function Rentals() {
           <p className="text-sm text-gray-500 mt-1">{rentals.length} rental records</p>
         </div>
         <button
-          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); setIsNewRenter(false); setAvailability(null); setShortageConfirmed(false); setManualTotal(false) }}
+          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); setIsNewRenter(false); setAvailability(null); setShortageConfirmed(false); setManualTotal(false); setRentalExpenses([]); setExpenseForm({ paid_by: '', category: 'delivery', amount: '', date: '', description: '' }); setEditingExpenseId(null) }}
           className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
         >
           <Plus size={16} /> <span className="hidden sm:inline">New Rental</span>
@@ -413,6 +461,78 @@ export default function Rentals() {
                 onChange={e => setForm({ ...form, notes: e.target.value })}
               />
             </div>
+            {editId && (
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">Rental Expenses</p>
+                <p className="text-xs text-gray-400 mb-3">Delivery, cleaning, repairs — tracked separately from event expenses.</p>
+
+                {rentalExpenses.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {rentalExpenses.map(exp => (
+                      <div key={exp.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">${parseFloat(exp.amount).toFixed(2)}</span>
+                          <span className="text-xs text-gray-500 ml-2 capitalize">{exp.category}</span>
+                          {exp.paid_by_name && <span className="text-xs text-gray-400 ml-2">· {exp.paid_by_name}</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleEditExpense(exp)} className="text-xs text-gray-500 font-medium">Edit</button>
+                          <button onClick={() => handleDeleteExpense(exp.id)} className="text-xs text-rose-600 font-medium">Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 bg-gray-50 rounded-lg p-3">
+                  <select
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={expenseForm.category}
+                    onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                  >
+                    <option value="delivery">Delivery</option>
+                    <option value="cleaning">Cleaning</option>
+                    <option value="repair">Repair</option>
+                    <option value="misc">Misc</option>
+                  </select>
+                  <select
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={expenseForm.paid_by}
+                    onChange={e => setExpenseForm({ ...expenseForm, paid_by: e.target.value })}
+                  >
+                    <option value="">Who paid?</option>
+                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    placeholder="Amount"
+                    value={expenseForm.amount}
+                    onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                  />
+                  <input
+                    type="date"
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={expenseForm.date}
+                    onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })}
+                  />
+                  <input
+                    className="col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    placeholder="Description"
+                    value={expenseForm.description}
+                    onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                  />
+                  <button
+                    onClick={handleAddExpense}
+                    className="col-span-2 bg-gray-800 text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-900"
+                  >
+                    {editingExpenseId ? 'Update Expense' : 'Add Expense'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2 mt-4">
               <button
                 onClick={handleSubmit}

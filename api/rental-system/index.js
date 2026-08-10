@@ -14,8 +14,12 @@ export default async function handler(req, res) {
     return handleRentals(req, res)
   } else if (resource === 'availability') {
     return handleAvailability(req, res)
+  } else if (resource === 'rental-expenses') {
+    return handleRentalExpenses(req, res)
+  } else if (resource === 'rental-profit') {
+    return handleRentalProfit(req, res)
   } else {
-    return res.status(400).json({ error: 'Missing or invalid resource — expected "renters", "rentals", or "availability"' })
+    return res.status(400).json({ error: 'Missing or invalid resource — expected "renters", "rentals", "availability", "rental-expenses", or "rental-profit"' })
   }
 }
 
@@ -170,6 +174,115 @@ async function handleAvailability(req, res) {
       total_quantity: totalQuantity,
       committed_quantity: committedQuantity,
       true_max_available: trueMaxAvailable
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+// Rental expenses use the same `expenses` table as event expenses, but
+// filtered strictly by rental_id (never event_id) so the two streams
+// never mix, matching the DB-level CHECK constraint.
+async function handleRentalExpenses(req, res) {
+  if (req.method === 'GET') {
+    const { rental_id } = req.query
+    try {
+      const query = rental_id
+        ? `SELECT e.*, u.name as paid_by_name 
+           FROM expenses e 
+           LEFT JOIN users u ON e.paid_by = u.id 
+           WHERE e.rental_id = $1 
+           ORDER BY e.date DESC`
+        : `SELECT e.*, u.name as paid_by_name, r.pickup_date, i.name as item_name
+           FROM expenses e
+           LEFT JOIN users u ON e.paid_by = u.id
+           LEFT JOIN rentals r ON e.rental_id = r.id
+           LEFT JOIN inventory i ON r.inventory_id = i.id
+           WHERE e.rental_id IS NOT NULL
+           ORDER BY e.date DESC`
+      const result = rental_id
+        ? await pool.query(query, [rental_id])
+        : await pool.query(query)
+      res.status(200).json(result.rows)
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+
+  else if (req.method === 'POST') {
+    const { rental_id, paid_by, category, amount, date, description, is_reimbursable } = req.body
+    try {
+      const result = await pool.query(
+        `INSERT INTO expenses 
+        (rental_id, paid_by, category, amount, date, description, is_reimbursable) 
+        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [rental_id, paid_by, category, amount, date, description, is_reimbursable || false]
+      )
+      res.status(201).json(result.rows[0])
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+
+  else if (req.method === 'PUT') {
+    const { id, paid_by, category, amount, date, description, is_reimbursable } = req.body
+    try {
+      const result = await pool.query(
+        `UPDATE expenses SET 
+        paid_by=$1, category=$2, amount=$3, date=$4, description=$5, is_reimbursable=$6
+        WHERE id=$7 AND rental_id IS NOT NULL RETURNING *`,
+        [paid_by, category, amount, date, description, is_reimbursable || false, id]
+      )
+      res.status(200).json(result.rows[0])
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+
+  else if (req.method === 'DELETE') {
+    const { id } = req.body
+    try {
+      await pool.query('DELETE FROM expenses WHERE id=$1 AND rental_id IS NOT NULL', [id])
+      res.status(200).json({ message: 'Rental expense deleted' })
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+}
+
+// Aggregates rental income (rental_amount + additional_charges - discounts)
+// and rental expenses (from the expenses table, filtered by rental_id) into
+// a single rental-side profit figure — kept entirely separate from event
+// profit split, per business requirement.
+async function handleRentalProfit(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+  try {
+    const rentalsResult = await pool.query(`
+      SELECT id, rental_amount, additional_charges, discounts, status
+      FROM rentals
+      WHERE status IN ('returned', 'closed')
+    `)
+    const rentals = rentalsResult.rows
+
+    const totalRentalIncome = rentals.reduce((sum, r) =>
+      sum + parseFloat(r.rental_amount || 0) + parseFloat(r.additional_charges || 0) - parseFloat(r.discounts || 0),
+      0
+    )
+
+    const expensesResult = await pool.query(`
+      SELECT amount FROM expenses WHERE rental_id IS NOT NULL
+    `)
+    const totalRentalExpenses = expensesResult.rows.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+
+    const rentalNetProfit = totalRentalIncome - totalRentalExpenses
+
+    res.status(200).json({
+      total_rental_income: totalRentalIncome,
+      total_rental_expenses: totalRentalExpenses,
+      rental_net_profit: rentalNetProfit,
+      completed_rentals_count: rentals.length
     })
   } catch (err) {
     res.status(500).json({ error: err.message })
