@@ -153,6 +153,66 @@ export default function Dashboard() {
           <p className="text-xs text-gray-400 mt-1">Event + Rental combined</p>
         </div>
       </div>
+      {/* Rental analytics */}
+      {rentalProfit && (rentalProfit.overdue_rentals?.length > 0 || rentalProfit.currently_rented?.length > 0 || rentalProfit.upcoming_rentals?.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          {rentalProfit.overdue_rentals?.length > 0 && (
+            <div className="bg-red-50 rounded-xl border border-red-200 p-5">
+              <p className="text-xs font-semibold text-red-700 mb-3">Overdue Returns</p>
+              <div className="space-y-2">
+                {rentalProfit.overdue_rentals.map(r => (
+                  <div key={r.id} className="text-xs">
+                    <p className="font-medium text-red-900">{r.item_name} × {r.quantity}</p>
+                    <p className="text-red-600">{r.renter_name} · due {new Date(r.return_date).toLocaleDateString()}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {rentalProfit.currently_rented?.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-semibold text-gray-700 mb-3">Currently Rented Out</p>
+              <div className="space-y-2">
+                {rentalProfit.currently_rented.slice(0, 5).map(r => (
+                  <div key={r.id} className="text-xs">
+                    <p className="font-medium text-gray-900">{r.item_name} × {r.quantity}</p>
+                    <p className="text-gray-500">{r.renter_name} · back {new Date(r.return_date).toLocaleDateString()}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {rentalProfit.upcoming_rentals?.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-semibold text-gray-700 mb-3">Upcoming Rentals</p>
+              <div className="space-y-2">
+                {rentalProfit.upcoming_rentals.map(r => (
+                  <div key={r.id} className="text-xs">
+                    <p className="font-medium text-gray-900">{r.item_name} × {r.quantity}</p>
+                    <p className="text-gray-500">{r.renter_name} · picks up {new Date(r.pickup_date).toLocaleDateString()}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {rentalProfit?.most_rented_items?.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+          <p className="text-xs font-semibold text-gray-700 mb-3">Most Rented Items</p>
+          <div className="space-y-2">
+            {rentalProfit.most_rented_items.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between text-sm">
+                <span className="text-gray-900">{item.name || 'Unknown item'}</span>
+                <span className="text-gray-500">{item.rental_count} rental{item.rental_count !== '1' ? 's' : ''} · {item.total_units_rented} units total</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Upcoming events */}

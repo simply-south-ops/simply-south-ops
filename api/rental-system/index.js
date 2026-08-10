@@ -337,40 +337,81 @@ async function handleListings(req, res) {
 
 // Auto-generates a templated draft listing from an inventory item's data —
 // user reviews/edits everything afterward, nothing is posted automatically.
-async function handleGenerateListing(req, res) {
-  if (req.method !== 'POST') {
+async function handleRentalProfit(req, res) {
+  if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
-  const { inventory_id } = req.body
   try {
-    const itemResult = await pool.query('SELECT * FROM inventory WHERE id=$1', [inventory_id])
-    if (itemResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Item not found' })
-    }
-    const item = itemResult.rows[0]
+    const rentalsResult = await pool.query(`
+      SELECT id, rental_amount, additional_charges, discounts, status
+      FROM rentals
+      WHERE status IN ('returned', 'closed')
+    `)
+    const rentals = rentalsResult.rows
 
-    const suggestedPrice = item.price_per_unit
-      ? (parseFloat(item.price_per_unit) * 0.15).toFixed(2)
-      : ''
-    const suggestedDeposit = item.cost
-      ? (parseFloat(item.cost) * 0.3).toFixed(2)
-      : ''
-
-    const title = `${item.name} for Rent${item.category ? ` — ${item.category}` : ''}`
-    const description = `Beautiful ${item.name.toLowerCase()} available for rent, perfect for weddings, showers, birthdays, and special events. Condition: ${item.condition}. Quantity available: ${item.quantity}. Reach out to book your dates!`
-    const whatsIncluded = `${item.quantity} × ${item.name}`
-    const rentalTerms = `Rental period covers your event date. A refundable damage deposit is required and returned after the item is checked back in undamaged. Late returns may incur additional daily charges. To confirm your booking, please provide your name, phone number, and email when messaging.`
-const pickupReturnInfo = `Pickup and return by arrangement — message us your preferred pickup and return dates along with your phone number and email, and we'll confirm available time slots. Delivery may be available for an additional fee depending on location.`
-const photoGuidance = `Use bright, natural-light photos. Show the item styled in a real event setting if possible, plus one clean close-up shot on a neutral background.`
-    const keywords = `${item.name}, event rental, ${item.category || 'decor'}, party rental, wedding rental`
-
-    const result = await pool.query(
-      `INSERT INTO listings 
-      (inventory_id, title, description, suggested_price, suggested_deposit, dimensions, whats_included, rental_terms, pickup_return_info, photo_guidance, keywords, status)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft') RETURNING *`,
-      [inventory_id, title, description, suggestedPrice || null, suggestedDeposit || null, '', whatsIncluded, rentalTerms, pickupReturnInfo, photoGuidance, keywords]
+    const totalRentalIncome = rentals.reduce((sum, r) =>
+      sum + parseFloat(r.rental_amount || 0) + parseFloat(r.additional_charges || 0) - parseFloat(r.discounts || 0),
+      0
     )
-    res.status(201).json(result.rows[0])
+
+    const expensesResult = await pool.query(`
+      SELECT amount FROM expenses WHERE rental_id IS NOT NULL
+    `)
+    const totalRentalExpenses = expensesResult.rows.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+
+    const rentalNetProfit = totalRentalIncome - totalRentalExpenses
+
+    // currently out / active
+    const activeResult = await pool.query(`
+      SELECT r.id, r.quantity, r.return_date, i.name as item_name, rt.name as renter_name
+      FROM rentals r
+      LEFT JOIN inventory i ON r.inventory_id = i.id
+      LEFT JOIN renters rt ON r.renter_id = rt.id
+      WHERE r.status = 'out_on_rent'
+      ORDER BY r.return_date ASC
+    `)
+
+    // upcoming (booked, not yet picked up)
+    const upcomingResult = await pool.query(`
+      SELECT r.id, r.quantity, r.pickup_date, i.name as item_name, rt.name as renter_name
+      FROM rentals r
+      LEFT JOIN inventory i ON r.inventory_id = i.id
+      LEFT JOIN renters rt ON r.renter_id = rt.id
+      WHERE r.status = 'booked' AND r.pickup_date >= CURRENT_DATE
+      ORDER BY r.pickup_date ASC
+      LIMIT 5
+    `)
+
+    // overdue (out on rent, past return date)
+    const overdueResult = await pool.query(`
+      SELECT r.id, r.quantity, r.return_date, i.name as item_name, rt.name as renter_name, rt.phone as renter_phone
+      FROM rentals r
+      LEFT JOIN inventory i ON r.inventory_id = i.id
+      LEFT JOIN renters rt ON r.renter_id = rt.id
+      WHERE r.status = 'out_on_rent' AND r.return_date < CURRENT_DATE
+      ORDER BY r.return_date ASC
+    `)
+
+    // most frequently rented items (all-time, by number of rental records)
+    const mostRentedResult = await pool.query(`
+      SELECT i.name, COUNT(r.id) as rental_count, SUM(r.quantity) as total_units_rented
+      FROM rentals r
+      LEFT JOIN inventory i ON r.inventory_id = i.id
+      GROUP BY i.name
+      ORDER BY rental_count DESC
+      LIMIT 5
+    `)
+
+    res.status(200).json({
+      total_rental_income: totalRentalIncome,
+      total_rental_expenses: totalRentalExpenses,
+      rental_net_profit: rentalNetProfit,
+      completed_rentals_count: rentals.length,
+      currently_rented: activeResult.rows,
+      upcoming_rentals: upcomingResult.rows,
+      overdue_rentals: overdueResult.rows,
+      most_rented_items: mostRentedResult.rows
+    })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
