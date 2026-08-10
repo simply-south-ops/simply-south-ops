@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, UserPlus } from 'lucide-react'
 
 const emptyForm = {
-  renter_id: '', inventory_id: '', quantity: '', pickup_date: '', return_date: '',
+  renter_id: '', new_renter_name: '', new_renter_phone: '', new_renter_email: '',
+  inventory_id: '', quantity: '', pickup_date: '', return_date: '',
   rental_amount: '', deposit_amount: '', deposit_returned: false,
   additional_charges: '', discounts: '', payment_status: 'pending',
   payment_method: '', notes: '', status: 'booked'
@@ -26,11 +27,12 @@ export default function Rentals() {
   const [form, setForm] = useState(emptyForm)
   const [editId, setEditId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isNewRenter, setIsNewRenter] = useState(false)
 
   const fetchAll = async () => {
     const [rRes, rtRes, invRes] = await Promise.all([
       fetch('/api/rental-system?resource=rentals'),
-      fetch('//api/rental-system?resource=renters'),
+      fetch('/api/rental-system?resource=renters'),
       fetch('/api/inventory')
     ])
     setRentals(await rRes.json())
@@ -42,16 +44,56 @@ export default function Rentals() {
   useEffect(() => { fetchAll() }, [])
 
   const handleSubmit = async () => {
-    if (!form.renter_id || !form.inventory_id) return alert('Renter and item are required')
+    if (!isNewRenter && !form.renter_id) return alert('Select a renter or add a new one')
+    if (isNewRenter && !form.new_renter_name) return alert('New renter needs a name')
+    if (!form.inventory_id) return alert('Select an item')
     if (!form.quantity || !form.pickup_date || !form.return_date) return alert('Quantity, pickup date, and return date are required')
+
+    let renterId = form.renter_id
+
+    if (isNewRenter) {
+      const renterRes = await fetch('/api/rental-system?resource=renters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'renters',
+          name: form.new_renter_name,
+          phone: form.new_renter_phone,
+          email: form.new_renter_email,
+          notes: ''
+        })
+      })
+      const newRenter = await renterRes.json()
+      renterId = newRenter.id
+    }
+
     const method = editId ? 'PUT' : 'POST'
-    const body = editId ? { ...form, id: editId } : form
+    const body = {
+      resource: 'rentals',
+      renter_id: renterId,
+      inventory_id: form.inventory_id,
+      quantity: form.quantity,
+      pickup_date: form.pickup_date,
+      return_date: form.return_date,
+      rental_amount: form.rental_amount,
+      deposit_amount: form.deposit_amount,
+      deposit_returned: form.deposit_returned,
+      additional_charges: form.additional_charges,
+      discounts: form.discounts,
+      payment_status: form.payment_status,
+      payment_method: form.payment_method,
+      notes: form.notes,
+      status: form.status,
+      ...(editId ? { id: editId } : {})
+    }
+
     await fetch('/api/rental-system?resource=rentals', {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     })
     setForm(emptyForm)
+    setIsNewRenter(false)
     setEditId(null)
     setShowForm(false)
     fetchAll()
@@ -59,7 +101,8 @@ export default function Rentals() {
 
   const handleEdit = (rental) => {
     setForm({
-      renter_id: rental.renter_id, inventory_id: rental.inventory_id,
+      renter_id: rental.renter_id, new_renter_name: '', new_renter_phone: '', new_renter_email: '',
+      inventory_id: rental.inventory_id,
       quantity: rental.quantity, pickup_date: rental.pickup_date?.split('T')[0],
       return_date: rental.return_date?.split('T')[0], rental_amount: rental.rental_amount || '',
       deposit_amount: rental.deposit_amount || '', deposit_returned: rental.deposit_returned,
@@ -67,6 +110,7 @@ export default function Rentals() {
       payment_status: rental.payment_status, payment_method: rental.payment_method || '',
       notes: rental.notes, status: rental.status
     })
+    setIsNewRenter(false)
     setEditId(rental.id)
     setShowForm(true)
   }
@@ -76,7 +120,7 @@ export default function Rentals() {
     await fetch('/api/rental-system?resource=rentals', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ resource: 'rentals', id })
     })
     fetchAll()
   }
@@ -93,7 +137,7 @@ export default function Rentals() {
           <p className="text-sm text-gray-500 mt-1">{rentals.length} rental records</p>
         </div>
         <button
-          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm) }}
+          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); setIsNewRenter(false) }}
           className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
         >
           <Plus size={16} /> <span className="hidden sm:inline">New Rental</span>
@@ -107,15 +151,55 @@ export default function Rentals() {
               <h2 className="text-lg font-semibold">{editId ? 'Edit Rental' : 'New Rental'}</h2>
               <button onClick={() => setShowForm(false)}><X size={20} /></button>
             </div>
+
+            <div className="mb-4 bg-gray-50 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-gray-700">Renter</label>
+                <button
+                  type="button"
+                  onClick={() => setIsNewRenter(!isNewRenter)}
+                  className="flex items-center gap-1 text-xs text-rose-600 hover:text-rose-700 font-medium"
+                >
+                  <UserPlus size={13} />
+                  {isNewRenter ? 'Choose existing renter' : 'New renter'}
+                </button>
+              </div>
+              {isNewRenter ? (
+                <div className="space-y-2">
+                  <input
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    placeholder="Full name *"
+                    value={form.new_renter_name}
+                    onChange={e => setForm({ ...form, new_renter_name: e.target.value })}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                      placeholder="Phone"
+                      value={form.new_renter_phone}
+                      onChange={e => setForm({ ...form, new_renter_phone: e.target.value })}
+                    />
+                    <input
+                      className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                      placeholder="Email"
+                      value={form.new_renter_email}
+                      onChange={e => setForm({ ...form, new_renter_email: e.target.value })}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <select
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                  value={form.renter_id}
+                  onChange={e => setForm({ ...form, renter_id: e.target.value })}
+                >
+                  <option value="">Select renter</option>
+                  {renters.map(r => <option key={r.id} value={r.id}>{r.name}{r.phone ? ` — ${r.phone}` : ''}</option>)}
+                </select>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <select
-                className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                value={form.renter_id}
-                onChange={e => setForm({ ...form, renter_id: e.target.value })}
-              >
-                <option value="">Select renter *</option>
-                {renters.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
               <select
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 value={form.inventory_id}
@@ -142,17 +226,16 @@ export default function Rentals() {
                 <option value="returned">Returned</option>
                 <option value="closed">Closed</option>
               </select>
+              <div />
               <input
                 type="date"
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                placeholder="Pickup date"
                 value={form.pickup_date}
                 onChange={e => setForm({ ...form, pickup_date: e.target.value })}
               />
               <input
                 type="date"
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                placeholder="Return date"
                 value={form.return_date}
                 onChange={e => setForm({ ...form, return_date: e.target.value })}
               />

@@ -21,7 +21,6 @@ const navItems = [
   { to: '/events', label: 'Events', icon: CalendarDays },
   { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/inventory', label: 'Inventory', icon: Package },
-  { to: '/renters', label: 'Renters', icon: UserSquare2 },
   { to: '/rentals', label: 'Rentals', icon: CalendarClock },
   { to: '/invoices', label: 'Invoices', icon: FileText },
   { to: '/clients', label: 'Clients', icon: Users },
