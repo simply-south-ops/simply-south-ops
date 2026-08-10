@@ -359,9 +359,9 @@ async function handleGenerateListing(req, res) {
     const title = `${item.name} for Rent${item.category ? ` — ${item.category}` : ''}`
     const description = `Beautiful ${item.name.toLowerCase()} available for rent, perfect for weddings, showers, birthdays, and special events. Condition: ${item.condition}. Quantity available: ${item.quantity}. Reach out to book your dates!`
     const whatsIncluded = `${item.quantity} × ${item.name}`
-    const rentalTerms = `Rental period covers your event date. A refundable damage deposit is required and returned after the item is checked back in undamaged. Late returns may incur additional daily charges.`
-    const pickupReturnInfo = `Pickup and return by arrangement — message for available time slots. Delivery may be available for an additional fee depending on location.`
-    const photoGuidance = `Use bright, natural-light photos. Show the item styled in a real event setting if possible, plus one clean close-up shot on a neutral background.`
+    const rentalTerms = `Rental period covers your event date. A refundable damage deposit is required and returned after the item is checked back in undamaged. Late returns may incur additional daily charges. To confirm your booking, please provide your name, phone number, and email when messaging.`
+const pickupReturnInfo = `Pickup and return by arrangement — message us your preferred pickup and return dates along with your phone number and email, and we'll confirm available time slots. Delivery may be available for an additional fee depending on location.`
+const photoGuidance = `Use bright, natural-light photos. Show the item styled in a real event setting if possible, plus one clean close-up shot on a neutral background.`
     const keywords = `${item.name}, event rental, ${item.category || 'decor'}, party rental, wedding rental`
 
     const result = await pool.query(
