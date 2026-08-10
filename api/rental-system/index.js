@@ -18,8 +18,12 @@ export default async function handler(req, res) {
     return handleRentalExpenses(req, res)
   } else if (resource === 'rental-profit') {
     return handleRentalProfit(req, res)
+  } else if (resource === 'listings') {
+    return handleListings(req, res)
+  } else if (resource === 'generate-listing') {
+    return handleGenerateListing(req, res)
   } else {
-    return res.status(400).json({ error: 'Missing or invalid resource — expected "renters", "rentals", "availability", "rental-expenses", or "rental-profit"' })
+    return res.status(400).json({ error: 'Missing or invalid resource' })
   }
 }
 
@@ -284,6 +288,89 @@ async function handleRentalProfit(req, res) {
       rental_net_profit: rentalNetProfit,
       completed_rentals_count: rentals.length
     })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+async function handleListings(req, res) {
+  if (req.method === 'GET') {
+    try {
+      const result = await pool.query(`
+        SELECT l.*, i.name as item_name, i.photo_url, i.quantity as item_quantity, i.condition
+        FROM listings l
+        LEFT JOIN inventory i ON l.inventory_id = i.id
+        ORDER BY l.created_at DESC
+      `)
+      res.status(200).json(result.rows)
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+
+  else if (req.method === 'PUT') {
+    const { id, title, description, suggested_price, suggested_deposit, dimensions, whats_included, rental_terms, pickup_return_info, photo_guidance, keywords, status } = req.body
+    try {
+      const result = await pool.query(
+        `UPDATE listings SET 
+        title=$1, description=$2, suggested_price=$3, suggested_deposit=$4, dimensions=$5,
+        whats_included=$6, rental_terms=$7, pickup_return_info=$8, photo_guidance=$9, keywords=$10, status=$11
+        WHERE id=$12 RETURNING *`,
+        [title, description, suggested_price || null, suggested_deposit || null, dimensions, whats_included, rental_terms, pickup_return_info, photo_guidance, keywords, status, id]
+      )
+      res.status(200).json(result.rows[0])
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+
+  else if (req.method === 'DELETE') {
+    const { id } = req.body
+    try {
+      await pool.query('DELETE FROM listings WHERE id=$1', [id])
+      res.status(200).json({ message: 'Listing deleted' })
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+}
+
+// Auto-generates a templated draft listing from an inventory item's data —
+// user reviews/edits everything afterward, nothing is posted automatically.
+async function handleGenerateListing(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+  const { inventory_id } = req.body
+  try {
+    const itemResult = await pool.query('SELECT * FROM inventory WHERE id=$1', [inventory_id])
+    if (itemResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Item not found' })
+    }
+    const item = itemResult.rows[0]
+
+    const suggestedPrice = item.price_per_unit
+      ? (parseFloat(item.price_per_unit) * 0.15).toFixed(2)
+      : ''
+    const suggestedDeposit = item.cost
+      ? (parseFloat(item.cost) * 0.3).toFixed(2)
+      : ''
+
+    const title = `${item.name} for Rent${item.category ? ` — ${item.category}` : ''}`
+    const description = `Beautiful ${item.name.toLowerCase()} available for rent, perfect for weddings, showers, birthdays, and special events. Condition: ${item.condition}. Quantity available: ${item.quantity}. Reach out to book your dates!`
+    const whatsIncluded = `${item.quantity} × ${item.name}`
+    const rentalTerms = `Rental period covers your event date. A refundable damage deposit is required and returned after the item is checked back in undamaged. Late returns may incur additional daily charges.`
+    const pickupReturnInfo = `Pickup and return by arrangement — message for available time slots. Delivery may be available for an additional fee depending on location.`
+    const photoGuidance = `Use bright, natural-light photos. Show the item styled in a real event setting if possible, plus one clean close-up shot on a neutral background.`
+    const keywords = `${item.name}, event rental, ${item.category || 'decor'}, party rental, wedding rental`
+
+    const result = await pool.query(
+      `INSERT INTO listings 
+      (inventory_id, title, description, suggested_price, suggested_deposit, dimensions, whats_included, rental_terms, pickup_return_info, photo_guidance, keywords, status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft') RETURNING *`,
+      [inventory_id, title, description, suggestedPrice || null, suggestedDeposit || null, '', whatsIncluded, rentalTerms, pickupReturnInfo, photoGuidance, keywords]
+    )
+    res.status(201).json(result.rows[0])
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

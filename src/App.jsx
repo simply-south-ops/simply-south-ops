@@ -6,6 +6,7 @@ import Expenses from './pages/expenses/Expenses'
 import Inventory from './pages/inventory/Inventory'
 import Renters from './pages/renters/Renters'
 import Rentals from './pages/rentals/Rentals'
+import Marketplace from './pages/marketplace/Marketplace'
 import Invoices from './pages/invoices/Invoices'
 import Clients from './pages/clients/Clients'
 import Enquiries from './pages/enquiries/Enquiries'
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="inventory" element={<Inventory />} />
         <Route path="renters" element={<Renters />} />
         <Route path="rentals" element={<Rentals />} />
+        <Route path="marketplace" element={<Marketplace />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="clients" element={<Clients />} />
         <Route path="enquiries" element={<Enquiries />} />

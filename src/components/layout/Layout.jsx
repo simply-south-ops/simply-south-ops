@@ -7,11 +7,11 @@ import {
   Package,
   FileText,
   Users,
-  UserSquare2,
   ClipboardList,
   PieChart,
   HandCoins,
   CalendarClock,
+  ShoppingBag,
   Menu,
   X
 } from 'lucide-react'
@@ -22,6 +22,7 @@ const navItems = [
   { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/inventory', label: 'Inventory', icon: Package },
   { to: '/rentals', label: 'Rentals', icon: CalendarClock },
+  { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
   { to: '/invoices', label: 'Invoices', icon: FileText },
   { to: '/clients', label: 'Clients', icon: Users },
   { to: '/enquiries', label: 'Enquiries', icon: ClipboardList },

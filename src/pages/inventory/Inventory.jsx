@@ -304,6 +304,21 @@ export default function Inventory() {
                     {item.usage_type === 'consumable' ? 'Consumable' : 'Reusable'}
                   </span>
                 </div>
+                {item.rentable && (
+                  <button
+                    onClick={async () => {
+                      await fetch('/api/rental-system?resource=generate-listing', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ resource: 'generate-listing', inventory_id: item.id })
+                      })
+                      alert('Listing generated — check the Marketplace page to review and edit it.')
+                    }}
+                    className="mt-2 text-xs text-rose-600 hover:text-rose-700 font-medium"
+                  >
+                    + Generate Listing
+                  </button>
+                )}
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-xs text-gray-500">Qty: {item.quantity || 1}</span>
                   <span className="text-sm font-semibold text-gray-900">
