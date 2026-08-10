@@ -11,7 +11,8 @@ const emptyForm = {
   line_items: [{ description: '', amount: '' }]
 }
 
-const LOGO_URL = 'https://res.cloudinary.com/deytyopnc/image/upload/v1785812887/simply-south-logo_z8m6l8.png'
+const LOGO_URL = 'https://res.cloudinary.com/deytyopnc/image/upload/v1786327023/simply-south-logo-transparent_dn3rpz.png'
+// const LOGO_URL = 'https://res.cloudinary.com/deytyopnc/image/upload/v1785812887/simply-south-logo_z8m6l8.png'
 
 async function getLogoDataUrl() {
   const res = await fetch(LOGO_URL)
@@ -124,7 +125,7 @@ export default function Invoices() {
 
       doc.setFontSize(16)
       doc.setTextColor(30)
-      doc.text('INVOICE', 160, headerY)
+      doc.text('INVOICE', 160, headerY+ 2)
 
       doc.setFontSize(10)
       doc.setTextColor(80)
