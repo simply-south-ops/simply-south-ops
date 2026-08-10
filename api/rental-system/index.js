@@ -258,40 +258,7 @@ async function handleRentalExpenses(req, res) {
 // and rental expenses (from the expenses table, filtered by rental_id) into
 // a single rental-side profit figure — kept entirely separate from event
 // profit split, per business requirement.
-async function handleRentalProfit(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-  try {
-    const rentalsResult = await pool.query(`
-      SELECT id, rental_amount, additional_charges, discounts, status
-      FROM rentals
-      WHERE status IN ('returned', 'closed')
-    `)
-    const rentals = rentalsResult.rows
-
-    const totalRentalIncome = rentals.reduce((sum, r) =>
-      sum + parseFloat(r.rental_amount || 0) + parseFloat(r.additional_charges || 0) - parseFloat(r.discounts || 0),
-      0
-    )
-
-    const expensesResult = await pool.query(`
-      SELECT amount FROM expenses WHERE rental_id IS NOT NULL
-    `)
-    const totalRentalExpenses = expensesResult.rows.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
-
-    const rentalNetProfit = totalRentalIncome - totalRentalExpenses
-
-    res.status(200).json({
-      total_rental_income: totalRentalIncome,
-      total_rental_expenses: totalRentalExpenses,
-      rental_net_profit: rentalNetProfit,
-      completed_rentals_count: rentals.length
-    })
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-}
+// Auto-generates a templated draft listing...
 
 async function handleListings(req, res) {
   if (req.method === 'GET') {
