@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, ChevronDown, ChevronRight } from 'lucide-react'
 
 const emptyForm = {
   event_id: '', paid_by: '', category: 'decor', amount: '',
@@ -7,6 +7,13 @@ const emptyForm = {
 }
 
 const categories = ['decor', 'transport', 'labour', 'food', 'rental', 'misc']
+const sortOptions = [
+  { value: 'date_desc', label: 'Date (newest first)' },
+  { value: 'date_asc', label: 'Date (oldest first)' },
+  { value: 'amount_desc', label: 'Amount (highest first)' },
+  { value: 'amount_asc', label: 'Amount (lowest first)' },
+  { value: 'category', label: 'Category (A–Z)' },
+]
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState([])
@@ -16,6 +23,9 @@ export default function Expenses() {
   const [form, setForm] = useState(emptyForm)
   const [editId, setEditId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [sortBy, setSortBy] = useState('date_desc')
+  const [collapsed, setCollapsed] = useState({})
+  const [eventFilter, setEventFilter] = useState('')
 
   const fetchAll = async () => {
     const [expRes, evRes, usRes] = await Promise.all([
@@ -67,11 +77,58 @@ export default function Expenses() {
     fetchAll()
   }
 
-  const total = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+  const toggleCollapse = (key) => {
+    setCollapsed(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const sortExpenses = (list) => {
+    const sorted = [...list]
+    switch (sortBy) {
+      case 'date_asc':
+        return sorted.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0))
+      case 'date_desc':
+        return sorted.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+      case 'amount_asc':
+        return sorted.sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount))
+      case 'amount_desc':
+        return sorted.sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount))
+      case 'category':
+        return sorted.sort((a, b) => a.category.localeCompare(b.category))
+      default:
+        return sorted
+    }
+  }
+
+  const filteredExpenses = eventFilter
+    ? expenses.filter(e => String(e.event_id) === eventFilter)
+    : expenses
+
+  const grouped = filteredExpenses.reduce((acc, exp) => {
+    const key = exp.event_id ? String(exp.event_id) : 'none'
+    if (!acc[key]) {
+      acc[key] = {
+        eventName: exp.event_name || 'No event assigned',
+        items: []
+      }
+    }
+    acc[key].items.push(exp)
+    return acc
+  }, {})
+
+  const groupEntries = Object.entries(grouped)
+    .map(([key, group]) => ({
+      key,
+      eventName: group.eventName,
+      items: sortExpenses(group.items),
+      total: group.items.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+    }))
+    .sort((a, b) => a.eventName.localeCompare(b.eventName))
+
+  const total = filteredExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
 
   return (
     <div className="p-4 md:p-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Expenses</h1>
           <p className="text-sm text-gray-500 mt-1">Total: <span className="font-semibold text-gray-700">${total.toFixed(2)}</span></p>
@@ -82,6 +139,25 @@ export default function Expenses() {
         >
           <Plus size={16} /> <span className="hidden sm:inline">Add Expense</span>
         </button>
+      </div>
+
+      {/* Filter + Sort controls */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <select
+          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+          value={eventFilter}
+          onChange={e => setEventFilter(e.target.value)}
+        >
+          <option value="">All events</option>
+          {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+        </select>
+        <select
+          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value)}
+        >
+          {sortOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+        </select>
       </div>
 
       {showForm && (
@@ -163,88 +239,106 @@ export default function Expenses() {
 
       {loading ? (
         <p className="text-gray-500 text-sm">Loading...</p>
-      ) : expenses.length === 0 ? (
+      ) : groupEntries.length === 0 ? (
         <p className="text-gray-500 text-sm">No expenses yet.</p>
       ) : (
-        <>
-          {/* Mobile cards */}
-          <div className="md:hidden space-y-3">
-            {expenses.map(expense => (
-              <div key={expense.id} className="bg-white rounded-xl border border-gray-200 p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">{expense.paid_by_name || '—'}</p>
-                    <p className="text-xs text-gray-500">{expense.event_name || '—'}</p>
+        <div className="space-y-3">
+          {groupEntries.map(group => {
+            const isCollapsed = collapsed[group.key]
+            return (
+              <div key={group.key} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <button
+                  onClick={() => toggleCollapse(group.key)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {isCollapsed ? <ChevronRight size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                    <span className="font-semibold text-gray-900 text-sm">{group.eventName}</span>
+                    <span className="text-xs text-gray-400">({group.items.length})</span>
                   </div>
-                  <span className="font-bold text-gray-900">${parseFloat(expense.amount).toFixed(2)}</span>
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs capitalize">{expense.category}</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${expense.is_reimbursable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {expense.is_reimbursable ? 'Reimbursable' : 'Not reimbursable'}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 mb-1">
-                  {expense.date ? new Date(expense.date).toLocaleDateString() : '—'}
-                </p>
-                {expense.description && <p className="text-xs text-gray-400 mb-2">{expense.description}</p>}
-                <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                  <button onClick={() => handleEdit(expense)} className="text-xs text-gray-500 font-medium">Edit</button>
-                  <button onClick={() => handleDelete(expense.id)} className="text-xs text-rose-600 font-medium">Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
+                  <span className="font-semibold text-gray-700 text-sm">${group.total.toFixed(2)}</span>
+                </button>
 
-          {/* Desktop table */}
-          <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Event</th>
-                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Paid By</th>
-                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Category</th>
-                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Amount</th>
-                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Date</th>
-                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Description</th>
-                  <th className="text-left px-4 py-3 text-gray-600 font-medium">Reimburse</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {expenses.map(expense => (
-                  <tr key={expense.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-600">{expense.event_name || '—'}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{expense.paid_by_name || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs capitalize">{expense.category}</span>
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-gray-900">${parseFloat(expense.amount).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {expense.date ? new Date(expense.date).toLocaleDateString() : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{expense.description || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${expense.is_reimbursable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {expense.is_reimbursable ? 'Yes' : 'No'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 justify-end">
-                        <button onClick={() => handleEdit(expense)} className="text-gray-400 hover:text-gray-600">
-                          <Pencil size={15} />
-                        </button>
-                        <button onClick={() => handleDelete(expense.id)} className="text-gray-400 hover:text-rose-600">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+                {!isCollapsed && (
+                  <>
+                    {/* Mobile cards */}
+                    <div className="md:hidden divide-y divide-gray-100">
+                      {group.items.map(expense => (
+                        <div key={expense.id} className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <p className="font-semibold text-gray-900 text-sm">{expense.paid_by_name || '—'}</p>
+                            </div>
+                            <span className="font-bold text-gray-900">${parseFloat(expense.amount).toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs capitalize">{expense.category}</span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${expense.is_reimbursable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                              {expense.is_reimbursable ? 'Reimbursable' : 'Not reimbursable'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mb-1">
+                            {expense.date ? new Date(expense.date).toLocaleDateString() : '—'}
+                          </p>
+                          {expense.description && <p className="text-xs text-gray-400 mb-2">{expense.description}</p>}
+                          <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                            <button onClick={() => handleEdit(expense)} className="text-xs text-gray-500 font-medium">Edit</button>
+                            <button onClick={() => handleDelete(expense.id)} className="text-xs text-rose-600 font-medium">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Desktop table */}
+                    <table className="hidden md:table w-full text-sm">
+                      <thead className="bg-gray-50 border-b border-t border-gray-200">
+                        <tr>
+                          <th className="text-left px-4 py-2 text-gray-500 font-medium text-xs">Paid By</th>
+                          <th className="text-left px-4 py-2 text-gray-500 font-medium text-xs">Category</th>
+                          <th className="text-left px-4 py-2 text-gray-500 font-medium text-xs">Amount</th>
+                          <th className="text-left px-4 py-2 text-gray-500 font-medium text-xs">Date</th>
+                          <th className="text-left px-4 py-2 text-gray-500 font-medium text-xs">Description</th>
+                          <th className="text-left px-4 py-2 text-gray-500 font-medium text-xs">Reimburse</th>
+                          <th className="px-4 py-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {group.items.map(expense => (
+                          <tr key={expense.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-medium text-gray-900">{expense.paid_by_name || '—'}</td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs capitalize">{expense.category}</span>
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-gray-900">${parseFloat(expense.amount).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-gray-600">
+                              {expense.date ? new Date(expense.date).toLocaleDateString() : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{expense.description || '—'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${expense.is_reimbursable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {expense.is_reimbursable ? 'Yes' : 'No'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2 justify-end">
+                                <button onClick={() => handleEdit(expense)} className="text-gray-400 hover:text-gray-600">
+                                  <Pencil size={15} />
+                                </button>
+                                <button onClick={() => handleDelete(expense.id)} className="text-gray-400 hover:text-rose-600">
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )
