@@ -313,7 +313,15 @@ export default function Rentals() {
                       <input
                         type="checkbox"
                         checked={shortageConfirmed}
-                        onChange={e => setShortageConfirmed(e.target.checked)}
+                        onChange={e => {
+                          setShortageConfirmed(e.target.checked)
+                          if (e.target.checked) {
+                            // reflect the capped quantity in the form immediately,
+                            // so the visible quantity and auto-calculated price
+                            // both update rather than only applying at save time
+                            setForm(f => ({ ...f, quantity: String(availability.true_max_available) }))
+                          }
+                        }}
                       />
                       Proceed with {availability.true_max_available} instead of {form.quantity}
                     </label>
