@@ -125,9 +125,7 @@ export default function Invoices() {
       doc.text('simplysouthevents@gmail.com', 14, headerY + 8)
 
       // INVOICE label — baseline-adjusted to visually align with the title line
-      doc.setFontSize(16)
-      doc.setTextColor(30)
-      doc.text('INVOICE', 160, headerY)
+      
 
       doc.setFontSize(10)
       doc.setTextColor(80)
