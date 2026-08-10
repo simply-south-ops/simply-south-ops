@@ -85,13 +85,13 @@ async function handleRentals(req, res) {
   }
 
   else if (req.method === 'POST') {
-    const { renter_id, inventory_id, quantity, pickup_date, return_date, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status } = req.body
+    const { renter_id, inventory_id, quantity, pickup_date, return_date, price_per_item, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status } = req.body
     try {
       const result = await pool.query(
         `INSERT INTO rentals 
-        (renter_id, inventory_id, quantity, pickup_date, return_date, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status) 
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
-        [renter_id, inventory_id, quantity, pickup_date, return_date, rental_amount || null, deposit_amount || null, deposit_returned || false, additional_charges || 0, discounts || 0, payment_status || 'pending', payment_method, notes, status || 'booked']
+        (renter_id, inventory_id, quantity, pickup_date, return_date, price_per_item, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status) 
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+        [renter_id, inventory_id, quantity, pickup_date, return_date, price_per_item || null, rental_amount || null, deposit_amount || null, deposit_returned || false, additional_charges || 0, discounts || 0, payment_status || 'pending', payment_method, notes, status || 'booked']
       )
       res.status(201).json(result.rows[0])
     } catch (err) {
@@ -100,15 +100,15 @@ async function handleRentals(req, res) {
   }
 
   else if (req.method === 'PUT') {
-    const { id, renter_id, inventory_id, quantity, pickup_date, return_date, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status } = req.body
+    const { id, renter_id, inventory_id, quantity, pickup_date, return_date, price_per_item, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status } = req.body
     try {
       const result = await pool.query(
         `UPDATE rentals SET 
         renter_id=$1, inventory_id=$2, quantity=$3, pickup_date=$4, return_date=$5, 
-        rental_amount=$6, deposit_amount=$7, deposit_returned=$8, additional_charges=$9, discounts=$10,
-        payment_status=$11, payment_method=$12, notes=$13, status=$14
-        WHERE id=$15 RETURNING *`,
-        [renter_id, inventory_id, quantity, pickup_date, return_date, rental_amount || null, deposit_amount || null, deposit_returned || false, additional_charges || 0, discounts || 0, payment_status || 'pending', payment_method, notes, status || 'booked', id]
+        price_per_item=$6, rental_amount=$7, deposit_amount=$8, deposit_returned=$9, additional_charges=$10,
+        discounts=$11, payment_status=$12, payment_method=$13, notes=$14, status=$15
+        WHERE id=$16 RETURNING *`,
+        [renter_id, inventory_id, quantity, pickup_date, return_date, price_per_item || null, rental_amount || null, deposit_amount || null, deposit_returned || false, additional_charges || 0, discounts || 0, payment_status || 'pending', payment_method, notes, status || 'booked', id]
       )
       res.status(200).json(result.rows[0])
     } catch (err) {

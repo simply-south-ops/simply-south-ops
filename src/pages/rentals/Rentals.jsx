@@ -4,7 +4,7 @@ import { Plus, Pencil, Trash2, X, UserPlus, AlertTriangle } from 'lucide-react'
 const emptyForm = {
   renter_id: '', new_renter_name: '', new_renter_phone: '', new_renter_email: '',
   inventory_id: '', quantity: '', pickup_date: '', return_date: '',
-  rental_amount: '', deposit_amount: '', deposit_returned: false,
+  price_per_item: '', rental_amount: '', deposit_amount: '', deposit_returned: false,
   additional_charges: '', discounts: '', payment_status: 'pending',
   payment_method: '', notes: '', status: 'booked'
 }
@@ -32,6 +32,7 @@ export default function Rentals() {
   const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [availability, setAvailability] = useState(null)
   const [shortageConfirmed, setShortageConfirmed] = useState(false)
+  const [manualTotal, setManualTotal] = useState(false)
 
   const fetchAll = async () => {
     const [rRes, rtRes, invRes] = await Promise.all([
@@ -78,6 +79,15 @@ export default function Rentals() {
     check()
   }, [form.inventory_id, form.quantity, form.pickup_date, form.return_date, editId])
 
+  // auto-calc rental_amount from price_per_item x quantity, unless manually overridden
+  useEffect(() => {
+    if (!manualTotal && form.price_per_item !== '') {
+      const qty = parseFloat(form.quantity) || 0
+      const price = parseFloat(form.price_per_item) || 0
+      setForm(f => ({ ...f, rental_amount: (qty * price).toFixed(2) }))
+    }
+  }, [form.quantity, form.price_per_item, manualTotal])
+
   const hasShortage = availability && parseInt(form.quantity) > availability.true_max_available
 
   const handleSubmit = async () => {
@@ -120,6 +130,7 @@ export default function Rentals() {
       quantity: finalQuantity,
       pickup_date: form.pickup_date,
       return_date: form.return_date,
+      price_per_item: form.price_per_item,
       rental_amount: form.rental_amount,
       deposit_amount: form.deposit_amount,
       deposit_returned: form.deposit_returned,
@@ -151,13 +162,15 @@ export default function Rentals() {
       renter_id: rental.renter_id, new_renter_name: '', new_renter_phone: '', new_renter_email: '',
       inventory_id: rental.inventory_id,
       quantity: rental.quantity, pickup_date: rental.pickup_date?.split('T')[0],
-      return_date: rental.return_date?.split('T')[0], rental_amount: rental.rental_amount || '',
+      return_date: rental.return_date?.split('T')[0],
+      price_per_item: rental.price_per_item || '', rental_amount: rental.rental_amount || '',
       deposit_amount: rental.deposit_amount || '', deposit_returned: rental.deposit_returned,
       additional_charges: rental.additional_charges || '', discounts: rental.discounts || '',
       payment_status: rental.payment_status, payment_method: rental.payment_method || '',
       notes: rental.notes, status: rental.status
     })
     setIsNewRenter(false)
+    setManualTotal(true)
     setEditId(rental.id)
     setShowForm(true)
   }
@@ -184,7 +197,7 @@ export default function Rentals() {
           <p className="text-sm text-gray-500 mt-1">{rentals.length} rental records</p>
         </div>
         <button
-          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); setIsNewRenter(false); setAvailability(null); setShortageConfirmed(false) }}
+          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); setIsNewRenter(false); setAvailability(null); setShortageConfirmed(false); setManualTotal(false) }}
           className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
         >
           <Plus size={16} /> <span className="hidden sm:inline">New Rental</span>
@@ -325,9 +338,17 @@ export default function Rentals() {
                 type="number"
                 step="0.01"
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                placeholder="Rental amount"
+                placeholder="Price / item"
+                value={form.price_per_item}
+                onChange={e => { setManualTotal(false); setForm({ ...form, price_per_item: e.target.value }) }}
+              />
+              <input
+                type="number"
+                step="0.01"
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                placeholder="Rental amount (total)"
                 value={form.rental_amount}
-                onChange={e => setForm({ ...form, rental_amount: e.target.value })}
+                onChange={e => { setManualTotal(true); setForm({ ...form, rental_amount: e.target.value }) }}
               />
               <input
                 type="number"
