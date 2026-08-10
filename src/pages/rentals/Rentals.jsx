@@ -29,8 +29,8 @@ export default function Rentals() {
 
   const fetchAll = async () => {
     const [rRes, rtRes, invRes] = await Promise.all([
-      fetch('/api/rentals'),
-      fetch('/api/renters'),
+      fetch('/api/rental-system?resource=rentals'),
+      fetch('//api/rental-system?resource=renters'),
       fetch('/api/inventory')
     ])
     setRentals(await rRes.json())
@@ -46,7 +46,7 @@ export default function Rentals() {
     if (!form.quantity || !form.pickup_date || !form.return_date) return alert('Quantity, pickup date, and return date are required')
     const method = editId ? 'PUT' : 'POST'
     const body = editId ? { ...form, id: editId } : form
-    await fetch('/api/rentals', {
+    await fetch('/api/rental-system?resource=rentals', {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -73,7 +73,7 @@ export default function Rentals() {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this rental?')) return
-    await fetch('/api/rentals', {
+    await fetch('/api/rental-system?resource=rentals', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id })

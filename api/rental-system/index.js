@@ -1,6 +1,69 @@
 import pool from '../../lib/db.js'
 
+// Combined endpoint for renters and rentals to stay under Vercel's
+// Hobby-plan serverless function limit. Distinguish by ?resource=renters
+// or ?resource=rentals in the query string.
+
 export default async function handler(req, res) {
+  const resource = req.query.resource || (req.body && req.body.resource)
+
+  if (resource === 'renters') {
+    return handleRenters(req, res)
+  } else if (resource === 'rentals') {
+    return handleRentals(req, res)
+  } else {
+    return res.status(400).json({ error: 'Missing or invalid resource — expected "renters" or "rentals"' })
+  }
+}
+
+async function handleRenters(req, res) {
+  if (req.method === 'GET') {
+    try {
+      const result = await pool.query('SELECT * FROM renters ORDER BY created_at DESC')
+      res.status(200).json(result.rows)
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+
+  else if (req.method === 'POST') {
+    const { name, phone, email, notes } = req.body
+    try {
+      const result = await pool.query(
+        'INSERT INTO renters (name, phone, email, notes) VALUES ($1, $2, $3, $4) RETURNING *',
+        [name, phone, email, notes]
+      )
+      res.status(201).json(result.rows[0])
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+
+  else if (req.method === 'PUT') {
+    const { id, name, phone, email, notes } = req.body
+    try {
+      const result = await pool.query(
+        'UPDATE renters SET name=$1, phone=$2, email=$3, notes=$4 WHERE id=$5 RETURNING *',
+        [name, phone, email, notes, id]
+      )
+      res.status(200).json(result.rows[0])
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+
+  else if (req.method === 'DELETE') {
+    const { id } = req.body
+    try {
+      await pool.query('DELETE FROM renters WHERE id=$1', [id])
+      res.status(200).json({ message: 'Renter deleted' })
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+  }
+}
+
+async function handleRentals(req, res) {
   if (req.method === 'GET') {
     try {
       const result = await pool.query(`

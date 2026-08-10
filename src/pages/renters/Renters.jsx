@@ -11,7 +11,7 @@ export default function Renters() {
   const [loading, setLoading] = useState(true)
 
   const fetchRenters = async () => {
-    const res = await fetch('/api/renters')
+    const res = await fetch('/api/rental-system?resource=renters')
     const data = await res.json()
     setRenters(data)
     setLoading(false)
@@ -23,10 +23,10 @@ export default function Renters() {
     if (!form.name) return alert('Renter name is required')
     const method = editId ? 'PUT' : 'POST'
     const body = editId ? { ...form, id: editId } : form
-    await fetch('/api/renters', {
+    await fetch('/api/rental-system?resource=renters', {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify({ ...body, resource: 'renters' })
     })
     setForm(emptyForm)
     setEditId(null)
@@ -42,7 +42,7 @@ export default function Renters() {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this renter?')) return
-    await fetch('/api/renters', {
+    await fetch('/api/rental-system?resource=renters', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id })
