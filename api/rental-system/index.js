@@ -129,6 +129,10 @@ async function handleRentals(req, res) {
       if (!id) {
         return res.status(400).json({ error: 'Missing rental id' })
       }
+      const linkedExpenses = await pool.query('SELECT COUNT(*) FROM expenses WHERE rental_id=$1', [id])
+      if (parseInt(linkedExpenses.rows[0].count) > 0) {
+        return res.status(409).json({ error: 'This rental has linked expenses. Delete those first from the rental\'s edit screen before deleting the rental.' })
+      }
       await pool.query('DELETE FROM rentals WHERE id=$1', [id])
       res.status(200).json({ message: 'Rental deleted' })
     } catch (err) {

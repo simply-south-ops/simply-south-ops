@@ -223,16 +223,20 @@ export default function Rentals() {
     fetchRentalExpenses(rental.id)
   }
 
-  const handleDelete = async (id) => {
+ const handleDelete = async (id) => {
     if (!confirm('Delete this rental?')) return
-    await fetch('/api/rental-system?resource=rentals', {
+    const res = await fetch('/api/rental-system?resource=rentals', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ resource: 'rentals', id })
     })
+    if (!res.ok) {
+      const data = await res.json()
+      alert(data.error || 'Could not delete this rental.')
+      return
+    }
     fetchAll()
   }
-
   const isOverdue = (rental) => {
     return rental.status === 'out_on_rent' && new Date(rental.return_date) < new Date()
   }
