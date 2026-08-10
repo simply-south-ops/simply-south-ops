@@ -178,12 +178,12 @@ export default function Invoices() {
     }
   }
 const statusColors = {
-    draft: 'bg-gray-100 text-gray-600',
-    sent: 'bg-blue-100 text-blue-700',
-    pending_payment: 'bg-amber-100 text-amber-700',
-    paid: 'bg-green-100 text-green-700'
-  }
-
+  draft: 'bg-gray-100 text-gray-600',
+  sent: 'bg-blue-100 text-blue-700',
+  pending: 'bg-amber-100 text-amber-700',
+  pending_payment: 'bg-amber-100 text-amber-700',
+  paid: 'bg-green-100 text-green-700'
+}
   return (
     <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
@@ -231,7 +231,7 @@ const statusColors = {
               >
                 <option value="draft">Draft</option>
                 <option value="sent">Sent</option>
-                <option value="pending_payment">Pending</option>
+               <option value="pending">Pending</option>
                 <option value="paid">Paid</option>
               </select>
             </div>
