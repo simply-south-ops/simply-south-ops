@@ -1,5 +1,5 @@
-import pool from '../db.js'
-import { recalculateProfitSplit } from '../lib/profit-calc.js'
+import pool from '../../lib/db.js'
+import { recalculateProfitSplit } from '../../lib/profit-calc.js'
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
