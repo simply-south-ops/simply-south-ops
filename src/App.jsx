@@ -4,6 +4,7 @@ import Dashboard from './pages/dashboard/Dashboard'
 import Events from './pages/events/Events'
 import Expenses from './pages/expenses/Expenses'
 import Inventory from './pages/inventory/Inventory'
+import Renters from './pages/renters/Renters'
 import Invoices from './pages/invoices/Invoices'
 import Clients from './pages/clients/Clients'
 import Enquiries from './pages/enquiries/Enquiries'
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="events" element={<Events />} />
         <Route path="expenses" element={<Expenses />} />
         <Route path="inventory" element={<Inventory />} />
+        <Route path="renters" element={<Renters />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="clients" element={<Clients />} />
         <Route path="enquiries" element={<Enquiries />} />
