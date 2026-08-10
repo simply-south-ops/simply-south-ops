@@ -160,7 +160,11 @@ export default function Invoices() {
         styles: { fontSize: 10 }
       })
 
-      const pageHeight = doc.internal.pageSize.height
+     const pageHeight = doc.internal.pageSize.height
+      doc.setFontSize(9)
+      doc.setTextColor(80)
+      doc.text('Payment via Interac e-Transfer to: ancytom24@gmail.com', 14, pageHeight - 22)
+
       doc.setFontSize(9)
       doc.setTextColor(150)
       doc.text('Thank you for choosing Simply South Events!', 14, pageHeight - 15)
@@ -173,10 +177,10 @@ export default function Invoices() {
       setGeneratingPdf(null)
     }
   }
-
-  const statusColors = {
+const statusColors = {
     draft: 'bg-gray-100 text-gray-600',
     sent: 'bg-blue-100 text-blue-700',
+    pending_payment: 'bg-amber-100 text-amber-700',
     paid: 'bg-green-100 text-green-700'
   }
 
@@ -227,6 +231,7 @@ export default function Invoices() {
               >
                 <option value="draft">Draft</option>
                 <option value="sent">Sent</option>
+                <option value="pending_payment">Pending</option>
                 <option value="paid">Paid</option>
               </select>
             </div>
