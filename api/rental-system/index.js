@@ -1,8 +1,9 @@
 import pool from '../../lib/db.js'
 
-// Combined endpoint for renters and rentals to stay under Vercel's
-// Hobby-plan serverless function limit. Distinguish by ?resource=renters
-// or ?resource=rentals in the query string.
+// Combined endpoint for renters, rentals, and availability checks — kept
+// in one file to stay well under Vercel's Hobby-plan serverless function
+// limit, leaving room for future additions (e.g. marketplace listings).
+// Distinguish by ?resource=renters | rentals | availability
 
 export default async function handler(req, res) {
   const resource = req.query.resource || (req.body && req.body.resource)
@@ -11,8 +12,10 @@ export default async function handler(req, res) {
     return handleRenters(req, res)
   } else if (resource === 'rentals') {
     return handleRentals(req, res)
+  } else if (resource === 'availability') {
+    return handleAvailability(req, res)
   } else {
-    return res.status(400).json({ error: 'Missing or invalid resource — expected "renters" or "rentals"' })
+    return res.status(400).json({ error: 'Missing or invalid resource — expected "renters", "rentals", or "availability"' })
   }
 }
 
@@ -121,5 +124,54 @@ async function handleRentals(req, res) {
     } catch (err) {
       res.status(500).json({ error: err.message })
     }
+  }
+}
+
+async function handleAvailability(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const { inventory_id, pickup_date, return_date, exclude_rental_id } = req.body
+
+  if (!inventory_id || !pickup_date || !return_date) {
+    return res.status(400).json({ error: 'inventory_id, pickup_date, and return_date are required' })
+  }
+
+  try {
+    const itemResult = await pool.query('SELECT quantity, name FROM inventory WHERE id=$1', [inventory_id])
+    if (itemResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Item not found' })
+    }
+    const totalQuantity = itemResult.rows[0].quantity
+    const itemName = itemResult.rows[0].name
+
+    const conflictQuery = `
+      SELECT id, quantity, pickup_date, return_date
+      FROM rentals
+      WHERE inventory_id = $1
+        AND status IN ('booked', 'out_on_rent')
+        AND pickup_date < $3
+        AND return_date > $2
+        ${exclude_rental_id ? 'AND id != $4' : ''}
+    `
+    const params = exclude_rental_id
+      ? [inventory_id, pickup_date, return_date, exclude_rental_id]
+      : [inventory_id, pickup_date, return_date]
+
+    const conflictResult = await pool.query(conflictQuery, params)
+    const conflicting = conflictResult.rows
+
+    const committedQuantity = conflicting.reduce((sum, r) => sum + r.quantity, 0)
+    const trueMaxAvailable = Math.max(0, totalQuantity - committedQuantity)
+
+    res.status(200).json({
+      item_name: itemName,
+      total_quantity: totalQuantity,
+      committed_quantity: committedQuantity,
+      true_max_available: trueMaxAvailable
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
   }
 }

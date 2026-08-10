@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, UserPlus } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, UserPlus, AlertTriangle } from 'lucide-react'
 
 const emptyForm = {
   renter_id: '', new_renter_name: '', new_renter_phone: '', new_renter_email: '',
@@ -29,6 +29,10 @@ export default function Rentals() {
   const [loading, setLoading] = useState(true)
   const [isNewRenter, setIsNewRenter] = useState(false)
 
+  const [checkingAvailability, setCheckingAvailability] = useState(false)
+  const [availability, setAvailability] = useState(null)
+  const [shortageConfirmed, setShortageConfirmed] = useState(false)
+
   const fetchAll = async () => {
     const [rRes, rtRes, invRes] = await Promise.all([
       fetch('/api/rental-system?resource=rentals'),
@@ -43,11 +47,48 @@ export default function Rentals() {
 
   useEffect(() => { fetchAll() }, [])
 
+  useEffect(() => {
+    const check = async () => {
+      if (!form.inventory_id || !form.quantity || !form.pickup_date || !form.return_date) {
+        setAvailability(null)
+        setShortageConfirmed(false)
+        return
+      }
+      setCheckingAvailability(true)
+      try {
+        const res = await fetch('/api/rental-system?resource=availability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resource: 'availability',
+            inventory_id: form.inventory_id,
+            pickup_date: form.pickup_date,
+            return_date: form.return_date,
+            exclude_rental_id: editId || undefined
+          })
+        })
+        const data = await res.json()
+        setAvailability(data)
+        setShortageConfirmed(false)
+      } catch (err) {
+        setAvailability(null)
+      }
+      setCheckingAvailability(false)
+    }
+    check()
+  }, [form.inventory_id, form.quantity, form.pickup_date, form.return_date, editId])
+
+  const hasShortage = availability && parseInt(form.quantity) > availability.true_max_available
+
   const handleSubmit = async () => {
     if (!isNewRenter && !form.renter_id) return alert('Select a renter or add a new one')
     if (isNewRenter && !form.new_renter_name) return alert('New renter needs a name')
     if (!form.inventory_id) return alert('Select an item')
     if (!form.quantity || !form.pickup_date || !form.return_date) return alert('Quantity, pickup date, and return date are required')
+
+    if (hasShortage && !shortageConfirmed) {
+      return alert('Please confirm the reduced quantity before saving, or adjust the quantity/dates.')
+    }
 
     let renterId = form.renter_id
 
@@ -67,12 +108,16 @@ export default function Rentals() {
       renterId = newRenter.id
     }
 
+    const finalQuantity = hasShortage && shortageConfirmed
+      ? availability.true_max_available
+      : form.quantity
+
     const method = editId ? 'PUT' : 'POST'
     const body = {
       resource: 'rentals',
       renter_id: renterId,
       inventory_id: form.inventory_id,
-      quantity: form.quantity,
+      quantity: finalQuantity,
       pickup_date: form.pickup_date,
       return_date: form.return_date,
       rental_amount: form.rental_amount,
@@ -94,6 +139,8 @@ export default function Rentals() {
     })
     setForm(emptyForm)
     setIsNewRenter(false)
+    setAvailability(null)
+    setShortageConfirmed(false)
     setEditId(null)
     setShowForm(false)
     fetchAll()
@@ -137,7 +184,7 @@ export default function Rentals() {
           <p className="text-sm text-gray-500 mt-1">{rentals.length} rental records</p>
         </div>
         <button
-          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); setIsNewRenter(false) }}
+          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); setIsNewRenter(false); setAvailability(null); setShortageConfirmed(false) }}
           className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
         >
           <Plus size={16} /> <span className="hidden sm:inline">New Rental</span>
@@ -216,17 +263,6 @@ export default function Rentals() {
                 value={form.quantity}
                 onChange={e => setForm({ ...form, quantity: e.target.value })}
               />
-              <select
-                className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                value={form.status}
-                onChange={e => setForm({ ...form, status: e.target.value })}
-              >
-                <option value="booked">Booked</option>
-                <option value="out_on_rent">Out on Rent</option>
-                <option value="returned">Returned</option>
-                <option value="closed">Closed</option>
-              </select>
-              <div />
               <input
                 type="date"
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
@@ -239,6 +275,52 @@ export default function Rentals() {
                 value={form.return_date}
                 onChange={e => setForm({ ...form, return_date: e.target.value })}
               />
+            </div>
+
+            {checkingAvailability && (
+              <p className="text-xs text-gray-400 mt-2">Checking availability...</p>
+            )}
+            {!checkingAvailability && availability && !hasShortage && (
+              <p className="text-xs text-green-600 mt-2">
+                ✓ {availability.true_max_available} of {availability.total_quantity} {availability.item_name} available for these dates
+              </p>
+            )}
+            {!checkingAvailability && hasShortage && (
+              <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-amber-800 font-medium">
+                      Only {availability.true_max_available} of {form.quantity} {availability.item_name} available for these dates.
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      {availability.committed_quantity} are already committed to other rentals in this window.
+                    </p>
+                    <label className="flex items-center gap-2 text-xs text-amber-800 mt-2 font-medium">
+                      <input
+                        type="checkbox"
+                        checked={shortageConfirmed}
+                        onChange={e => setShortageConfirmed(e.target.checked)}
+                      />
+                      Proceed with {availability.true_max_available} instead of {form.quantity}
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              <select
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                value={form.status}
+                onChange={e => setForm({ ...form, status: e.target.value })}
+              >
+                <option value="booked">Booked</option>
+                <option value="out_on_rent">Out on Rent</option>
+                <option value="returned">Returned</option>
+                <option value="closed">Closed</option>
+              </select>
+              <div />
               <input
                 type="number"
                 step="0.01"
@@ -305,7 +387,8 @@ export default function Rentals() {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={handleSubmit}
-                className="flex-1 bg-rose-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
+                disabled={hasShortage && !shortageConfirmed}
+                className="flex-1 bg-rose-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editId ? 'Update' : 'Save'}
               </button>
