@@ -11,8 +11,7 @@ const emptyForm = {
   line_items: [{ description: '', amount: '' }]
 }
 
-const LOGO_URL = 'https://res.cloudinary.com/deytyopnc/image/upload/v1786327023/simply-south-logo-transparent_dn3rpz.png'
-// const LOGO_URL = 'https://res.cloudinary.com/deytyopnc/image/upload/v1785812887/simply-south-logo_z8m6l8.png'
+const LOGO_URL = 'https://res.cloudinary.com/deytyopnc/image/upload/v1786327448/simply-south-logo-v2_lcimop.png'
 
 async function getLogoDataUrl() {
   const res = await fetch(LOGO_URL)
@@ -109,11 +108,13 @@ export default function Invoices() {
       const doc = new jsPDF()
       const logoDataUrl = await getLogoDataUrl()
 
+      // Logo — centered top row, larger than before
       const pageWidth = doc.internal.pageSize.width
-      const logoSize = 24
-      doc.addImage(logoDataUrl, 'PNG', (pageWidth - logoSize) / 2, 10, logoSize, logoSize)
+      const logoSize = 34
+      doc.addImage(logoDataUrl, 'PNG', (pageWidth - logoSize) / 2, 8, logoSize, logoSize)
 
-      const headerY = 44
+      // Header block starts below the logo
+      const headerY = 54
 
       doc.setFontSize(22)
       doc.setTextColor(190, 30, 45)
@@ -123,9 +124,10 @@ export default function Invoices() {
       doc.setTextColor(100)
       doc.text('simplysouthevents@gmail.com', 14, headerY + 8)
 
+      // INVOICE label — baseline-adjusted to visually align with the title line
       doc.setFontSize(16)
       doc.setTextColor(30)
-      doc.text('INVOICE', 160, headerY+ 2)
+      doc.text('INVOICE', 160, headerY - 2)
 
       doc.setFontSize(10)
       doc.setTextColor(80)
@@ -133,6 +135,7 @@ export default function Invoices() {
       doc.text(`Date: ${invoice.issued_date ? new Date(invoice.issued_date).toLocaleDateString() : ''}`, 140, headerY + 14)
       doc.text(`Status: ${invoice.status.toUpperCase()}`, 140, headerY + 20)
 
+      // Client info
       doc.setFontSize(11)
       doc.setTextColor(30)
       doc.text('Bill To:', 14, headerY + 26)
