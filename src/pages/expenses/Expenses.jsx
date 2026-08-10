@@ -116,12 +116,24 @@ export default function Expenses() {
   }, {})
 
   const groupEntries = Object.entries(grouped)
-    .map(([key, group]) => ({
-      key,
-      eventName: group.eventName,
-      items: sortExpenses(group.items),
-      total: group.items.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
-    }))
+    .map(([key, group]) => {
+      const byPartner = {}
+      group.items.forEach(exp => {
+        const name = exp.paid_by_name || 'Unassigned'
+        byPartner[name] = (byPartner[name] || 0) + parseFloat(exp.amount || 0)
+      })
+      const partnerTotals = Object.entries(byPartner)
+        .map(([name, amount]) => ({ name, amount }))
+        .sort((a, b) => b.amount - a.amount)
+
+      return {
+        key,
+        eventName: group.eventName,
+        items: sortExpenses(group.items),
+        total: group.items.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
+        partnerTotals
+      }
+    })
     .sort((a, b) => a.eventName.localeCompare(b.eventName))
 
   const total = filteredExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
@@ -261,6 +273,16 @@ export default function Expenses() {
 
                 {!isCollapsed && (
                   <>
+                    {group.partnerTotals.length > 0 && (
+                      <div className="px-4 py-3 bg-gray-50/60 border-b border-gray-100 flex flex-wrap gap-x-6 gap-y-1">
+                        {group.partnerTotals.map(p => (
+                          <div key={p.name} className="text-xs text-gray-600">
+                            <span className="font-medium text-gray-800">{p.name}</span>: ${p.amount.toFixed(2)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Mobile cards */}
                     <div className="md:hidden divide-y divide-gray-100">
                       {group.items.map(expense => (
