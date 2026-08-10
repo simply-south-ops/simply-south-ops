@@ -11,6 +11,7 @@ import {
   ClipboardList,
   PieChart,
   HandCoins,
+  CalendarClock,
   Menu,
   X
 } from 'lucide-react'
@@ -21,6 +22,7 @@ const navItems = [
   { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/inventory', label: 'Inventory', icon: Package },
   { to: '/renters', label: 'Renters', icon: UserSquare2 },
+  { to: '/rentals', label: 'Rentals', icon: CalendarClock },
   { to: '/invoices', label: 'Invoices', icon: FileText },
   { to: '/clients', label: 'Clients', icon: Users },
   { to: '/enquiries', label: 'Enquiries', icon: ClipboardList },
