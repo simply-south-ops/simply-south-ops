@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Calendar, DollarSign, AlertCircle, Package, TrendingUp, Users } from 'lucide-react'
+import { Calendar, DollarSign, AlertCircle, Package, TrendingUp, Users, Boxes } from 'lucide-react'
 
 export default function Dashboard() {
   const [events, setEvents] = useState([])
@@ -8,17 +8,19 @@ export default function Dashboard() {
   const [inventory, setInventory] = useState([])
   const [enquiries, setEnquiries] = useState([])
   const [splits, setSplits] = useState([])
+  const [rentalProfit, setRentalProfit] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [evRes, exRes, invRes, invtRes, enqRes, spRes] = await Promise.all([
+      const [evRes, exRes, invRes, invtRes, enqRes, spRes, rpRes] = await Promise.all([
         fetch('/api/events'),
         fetch('/api/expenses'),
         fetch('/api/invoices'),
         fetch('/api/inventory'),
         fetch('/api/enquiries'),
-        fetch('/api/profitsplit')
+        fetch('/api/profitsplit'),
+        fetch('/api/rental-system?resource=rental-profit')
       ])
       setEvents(await evRes.json())
       setExpenses(await exRes.json())
@@ -26,12 +28,13 @@ export default function Dashboard() {
       setInventory(await invtRes.json())
       setEnquiries(await enqRes.json())
       setSplits(await spRes.json())
+      setRentalProfit(await rpRes.json())
       setLoading(false)
     }
     fetchAll()
   }, [])
 
-  if (loading) return <div className="p-8"><p className="text-gray-500 text-sm">Loading...</p></div>
+  if (loading) return <div className="p-4 md:p-8"><p className="text-gray-500 text-sm">Loading...</p></div>
 
   const clientEvents = events.filter(e => !e.is_internal)
   const upcoming = clientEvents
@@ -43,13 +46,18 @@ export default function Dashboard() {
   const outstandingTotal = outstandingInvoices.reduce((sum, i) => sum + parseFloat(i.total_amount || 0), 0)
 
   const totalRevenue = clientEvents.reduce((sum, e) => sum + parseFloat(e.quote_amount || 0), 0)
-  const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+  // exclude rental-linked expenses — they share the same table but must
+  // stay out of the event-expense figure per business requirement
+  const eventExpensesOnly = expenses.filter(e => e.event_id)
+  const totalExpenses = eventExpensesOnly.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
 
   const clientSplits = splits.filter(s => !s.is_internal)
-  const totalNetProfit = clientSplits.reduce((sum, s) => sum + parseFloat(s.net_profit || 0), 0)
+  const eventNetProfit = clientSplits.reduce((sum, s) => sum + parseFloat(s.net_profit || 0), 0)
+
+  const rentalNetProfit = rentalProfit ? parseFloat(rentalProfit.rental_net_profit || 0) : 0
+  const combinedProfit = eventNetProfit + rentalNetProfit
 
   const inventoryValue = inventory.reduce((sum, i) => sum + parseFloat(i.cost || 0), 0)
-
   const newEnquiries = enquiries.filter(e => e.status === 'new' || e.status === 'follow_up').length
 
   const statusColors = {
@@ -60,8 +68,19 @@ export default function Dashboard() {
     cancelled: 'bg-red-100 text-red-700'
   }
 
+  const ProfitFigure = ({ value, hasData }) => {
+    if (!hasData) {
+      return <p className="text-xl font-bold text-gray-400">—</p>
+    }
+    return (
+      <p className={`text-xl font-bold ${value >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+        {value >= 0 ? '$' : '-$'}{Math.abs(value).toFixed(2)}
+      </p>
+    )
+  }
+
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Dashboard</h1>
       <p className="text-sm text-gray-500 mb-6">Overview of your business</p>
 
@@ -73,28 +92,6 @@ export default function Dashboard() {
             <DollarSign size={16} className="text-green-500" />
           </div>
           <p className="text-xl font-bold text-gray-900">${totalRevenue.toFixed(2)}</p>
-        </div>
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-gray-500">Net Profit (Client Events)</p>
-            <TrendingUp size={16} className={totalNetProfit >= 0 ? 'text-green-500' : 'text-red-500'} />
-          </div>
-          {clientSplits.length === 0 ? (
-            <>
-              <p className="text-xl font-bold text-gray-400">—</p>
-              <p className="text-xs text-gray-400 mt-1">No splits calculated yet</p>
-            </>
-          ) : (
-            <>
-              <p className={`text-xl font-bold ${totalNetProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-                {totalNetProfit >= 0 ? '$' : '-$'}{Math.abs(totalNetProfit).toFixed(2)}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                {clientSplits.length} event{clientSplits.length !== 1 ? 's' : ''} calculated
-                {totalNetProfit < 0 && ' · Loss'}
-              </p>
-            </>
-          )}
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-2">
@@ -111,6 +108,49 @@ export default function Dashboard() {
           </div>
           <p className="text-xl font-bold text-gray-900">${inventoryValue.toFixed(2)}</p>
           <p className="text-xs text-gray-400 mt-1">{inventory.length} items</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-500">Active Enquiries</p>
+            <Users size={16} className="text-purple-500" />
+          </div>
+          <p className="text-xl font-bold text-gray-900">{newEnquiries}</p>
+        </div>
+      </div>
+
+      {/* Profit breakdown - kept explicitly separate per business requirement */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-500">Event Profit</p>
+            <TrendingUp size={16} className={eventNetProfit >= 0 ? 'text-green-500' : 'text-red-500'} />
+          </div>
+          <ProfitFigure value={eventNetProfit} hasData={clientSplits.length > 0} />
+          <p className="text-xs text-gray-400 mt-1">
+            {clientSplits.length > 0 ? `${clientSplits.length} event${clientSplits.length !== 1 ? 's' : ''} calculated` : 'No splits calculated yet'}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-500">Rental Profit</p>
+            <Boxes size={16} className={rentalNetProfit >= 0 ? 'text-green-500' : 'text-red-500'} />
+          </div>
+          <ProfitFigure value={rentalNetProfit} hasData={rentalProfit && rentalProfit.completed_rentals_count > 0} />
+          <p className="text-xs text-gray-400 mt-1">
+            {rentalProfit && rentalProfit.completed_rentals_count > 0
+              ? `${rentalProfit.completed_rentals_count} rental${rentalProfit.completed_rentals_count !== 1 ? 's' : ''} returned/closed`
+              : 'No completed rentals yet'}
+          </p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-300">Combined Total</p>
+            <TrendingUp size={16} className="text-gray-300" />
+          </div>
+          <p className={`text-xl font-bold ${combinedProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {combinedProfit >= 0 ? '$' : '-$'}{Math.abs(combinedProfit).toFixed(2)}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">Event + Rental combined</p>
         </div>
       </div>
 

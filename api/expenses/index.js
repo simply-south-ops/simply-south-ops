@@ -15,6 +15,7 @@ export default async function handler(req, res) {
            FROM expenses e 
            LEFT JOIN users u ON e.paid_by = u.id
            LEFT JOIN events ev ON e.event_id = ev.id
+           WHERE e.rental_id IS NULL
            ORDER BY e.date DESC`
       const result = event_id
         ? await pool.query(query, [event_id])
