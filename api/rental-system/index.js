@@ -73,7 +73,6 @@ async function handleRenters(req, res) {
     }
   }
 }
-
 async function handleRentals(req, res) {
   if (req.method === 'GET') {
     try {
@@ -93,8 +92,8 @@ async function handleRentals(req, res) {
   }
 
   else if (req.method === 'POST') {
-    const { renter_id, inventory_id, quantity, pickup_date, return_date, price_per_item, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status } = req.body
     try {
+      const { renter_id, inventory_id, quantity, pickup_date, return_date, price_per_item, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status } = req.body
       const result = await pool.query(
         `INSERT INTO rentals 
         (renter_id, inventory_id, quantity, pickup_date, return_date, price_per_item, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status) 
@@ -108,8 +107,8 @@ async function handleRentals(req, res) {
   }
 
   else if (req.method === 'PUT') {
-    const { id, renter_id, inventory_id, quantity, pickup_date, return_date, price_per_item, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status } = req.body
     try {
+      const { id, renter_id, inventory_id, quantity, pickup_date, return_date, price_per_item, rental_amount, deposit_amount, deposit_returned, additional_charges, discounts, payment_status, payment_method, notes, status } = req.body
       const result = await pool.query(
         `UPDATE rentals SET 
         renter_id=$1, inventory_id=$2, quantity=$3, pickup_date=$4, return_date=$5, 
@@ -125,8 +124,11 @@ async function handleRentals(req, res) {
   }
 
   else if (req.method === 'DELETE') {
-    const { id } = req.body
     try {
+      const { id } = req.body
+      if (!id) {
+        return res.status(400).json({ error: 'Missing rental id' })
+      }
       await pool.query('DELETE FROM rentals WHERE id=$1', [id])
       res.status(200).json({ message: 'Rental deleted' })
     } catch (err) {
