@@ -25,6 +25,7 @@ export default function Expenses() {
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState('date_desc')
   const [collapsed, setCollapsed] = useState({})
+const [initialized, setInitialized] = useState(false)
   const [eventFilter, setEventFilter] = useState('')
 
   const fetchAll = async () => {
@@ -114,7 +115,16 @@ export default function Expenses() {
     acc[key].items.push(exp)
     return acc
   }, {})
-
+// default all groups to collapsed on first load
+  useEffect(() => {
+    if (!initialized && expenses.length > 0) {
+      const allKeys = [...new Set(expenses.map(e => e.event_id ? String(e.event_id) : 'none'))]
+      const initialCollapsed = {}
+      allKeys.forEach(k => { initialCollapsed[k] = true })
+      setCollapsed(initialCollapsed)
+      setInitialized(true)
+    }
+  }, [expenses, initialized])
   const groupEntries = Object.entries(grouped)
     .map(([key, group]) => {
       const byPartner = {}
