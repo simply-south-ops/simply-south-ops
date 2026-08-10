@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, X, Image, AlertCircle } from 'lucide-react'
 
 const emptyForm = {
   name: '', category: '', quantity: '1', price_per_unit: '', cost: '',
-  condition: 'good', photo_url: '', notes: ''
+  condition: 'good', photo_url: '', notes: '', source: 'bought', rentable: false, usage_type: 'reusable'
 }
 
 const conditions = ['good', 'fair', 'damaged']
@@ -42,7 +42,6 @@ export default function Inventory() {
     setUploading(false)
   }
 
-  // auto-calc total cost from price_per_unit x quantity, unless user manually overrides
   useEffect(() => {
     if (!manualTotal) {
       const qty = parseFloat(form.quantity) || 0
@@ -75,7 +74,10 @@ export default function Inventory() {
       quantity: item.quantity || '1',
       price_per_unit: item.price_per_unit || '',
       cost: item.cost, condition: item.condition,
-      photo_url: item.photo_url, notes: item.notes
+      photo_url: item.photo_url, notes: item.notes,
+      source: item.source || 'bought',
+      rentable: item.rentable || false,
+      usage_type: item.usage_type || 'reusable'
     })
     setManualTotal(true)
     setEditId(item.id)
@@ -185,7 +187,35 @@ export default function Inventory() {
                 Leave prices blank if unknown — total auto-fills from price/piece × quantity, or enter total directly.
               </p>
 
-              {/* Photo upload */}
+              <div className="border-t border-gray-100 pt-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <select
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    value={form.source}
+                    onChange={e => setForm({ ...form, source: e.target.value })}
+                  >
+                    <option value="bought">Bought from store</option>
+                    <option value="in_house">Produced in-house</option>
+                  </select>
+                  <select
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    value={form.usage_type}
+                    onChange={e => setForm({ ...form, usage_type: e.target.value })}
+                  >
+                    <option value="reusable">Reusable</option>
+                    <option value="consumable">Consumable / single-use</option>
+                  </select>
+                </div>
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={form.rentable}
+                    onChange={e => setForm({ ...form, rentable: e.target.checked })}
+                  />
+                  Available for rent
+                </label>
+              </div>
+
               <div className="border border-dashed border-gray-300 rounded-lg p-4 text-center">
                 {form.photo_url ? (
                   <div className="space-y-2">
@@ -264,6 +294,14 @@ export default function Inventory() {
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${conditionColors[item.condition]}`}>
                     {item.condition}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {item.rentable && (
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Rentable</span>
+                  )}
+                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs capitalize">
+                    {item.usage_type === 'consumable' ? 'Consumable' : 'Reusable'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between mt-3">
