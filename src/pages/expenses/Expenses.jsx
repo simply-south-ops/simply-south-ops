@@ -25,8 +25,9 @@ export default function Expenses() {
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState('date_desc')
   const [collapsed, setCollapsed] = useState({})
-const [initialized, setInitialized] = useState(false)
+  const [initialized, setInitialized] = useState(false)
   const [eventFilter, setEventFilter] = useState('')
+  const [uploading, setUploading] = useState(false)
 
   const fetchAll = async () => {
     const [expRes, evRes, usRes] = await Promise.all([
@@ -41,6 +42,33 @@ const [initialized, setInitialized] = useState(false)
   }
 
   useEffect(() => { fetchAll() }, [])
+
+  // default all groups to collapsed on first load
+  useEffect(() => {
+    if (!initialized && expenses.length > 0) {
+      const allKeys = [...new Set(expenses.map(e => e.event_id ? String(e.event_id) : 'none'))]
+      const initialCollapsed = {}
+      allKeys.forEach(k => { initialCollapsed[k] = true })
+      setCollapsed(initialCollapsed)
+      setInitialized(true)
+    }
+  }, [expenses, initialized])
+
+  const handleReceiptUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    const data = new FormData()
+    data.append('file', file)
+    data.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET)
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`,
+      { method: 'POST', body: data }
+    )
+    const result = await res.json()
+    setForm(f => ({ ...f, receipt_url: result.secure_url }))
+    setUploading(false)
+  }
 
   const handleSubmit = async () => {
     if (!form.amount) return alert('Amount is required')
@@ -62,7 +90,7 @@ const [initialized, setInitialized] = useState(false)
       event_id: expense.event_id, paid_by: expense.paid_by,
       category: expense.category, amount: expense.amount,
       date: expense.date?.split('T')[0], description: expense.description,
-      receipt_url: expense.receipt_url, is_reimbursable: expense.is_reimbursable
+      receipt_url: expense.receipt_url || '', is_reimbursable: expense.is_reimbursable
     })
     setEditId(expense.id)
     setShowForm(true)
@@ -115,16 +143,7 @@ const [initialized, setInitialized] = useState(false)
     acc[key].items.push(exp)
     return acc
   }, {})
-// default all groups to collapsed on first load
-  useEffect(() => {
-    if (!initialized && expenses.length > 0) {
-      const allKeys = [...new Set(expenses.map(e => e.event_id ? String(e.event_id) : 'none'))]
-      const initialCollapsed = {}
-      allKeys.forEach(k => { initialCollapsed[k] = true })
-      setCollapsed(initialCollapsed)
-      setInitialized(true)
-    }
-  }, [expenses, initialized])
+
   const groupEntries = Object.entries(grouped)
     .map(([key, group]) => {
       const byPartner = {}
@@ -213,6 +232,40 @@ const [initialized, setInitialized] = useState(false)
               >
                 {categories.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
               </select>
+
+              {/* Receipt upload — images or PDF */}
+              <div className="border border-dashed border-gray-300 rounded-lg p-3">
+                {form.receipt_url ? (
+                  <div className="flex items-center justify-between">
+                    <a
+                      href={form.receipt_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-rose-600 hover:text-rose-700 font-medium truncate"
+                    >
+                      View uploaded receipt
+                    </a>
+                    <button
+                      onClick={() => setForm({ ...form, receipt_url: '' })}
+                      className="text-xs text-gray-400 hover:text-gray-600 ml-2"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer flex items-center justify-center gap-2 text-sm text-gray-500 py-2">
+                    {uploading ? 'Uploading...' : 'Upload receipt (image or PDF)'}
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={handleReceiptUpload}
+                    />
+                  </label>
+                )}
+              </div>
+
               <input
                 type="number"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
@@ -244,7 +297,8 @@ const [initialized, setInitialized] = useState(false)
             <div className="flex gap-2 mt-4">
               <button
                 onClick={handleSubmit}
-                className="flex-1 bg-rose-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-rose-700"
+                disabled={uploading}
+                className="flex-1 bg-rose-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-rose-700 disabled:opacity-50"
               >
                 {editId ? 'Update' : 'Save'}
               </button>
@@ -313,6 +367,11 @@ const [initialized, setInitialized] = useState(false)
                             {expense.date ? new Date(expense.date).toLocaleDateString() : '—'}
                           </p>
                           {expense.description && <p className="text-xs text-gray-400 mb-2">{expense.description}</p>}
+                          {expense.receipt_url && (
+                            <a href={expense.receipt_url} target="_blank" rel="noopener noreferrer" className="text-xs text-rose-600 font-medium block mb-2">
+                              View receipt
+                            </a>
+                          )}
                           <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
                             <button onClick={() => handleEdit(expense)} className="text-xs text-gray-500 font-medium">Edit</button>
                             <button onClick={() => handleDelete(expense.id)} className="text-xs text-rose-600 font-medium">Delete</button>
@@ -345,7 +404,14 @@ const [initialized, setInitialized] = useState(false)
                             <td className="px-4 py-3 text-gray-600">
                               {expense.date ? new Date(expense.date).toLocaleDateString() : '—'}
                             </td>
-                            <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{expense.description || '—'}</td>
+                            <td className="px-4 py-3 text-gray-500 max-w-xs truncate">
+                              {expense.description || '—'}
+                              {expense.receipt_url && (
+                                <a href={expense.receipt_url} target="_blank" rel="noopener noreferrer" className="block text-rose-600 font-medium text-xs mt-0.5">
+                                  View receipt
+                                </a>
+                              )}
+                            </td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${expense.is_reimbursable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                                 {expense.is_reimbursable ? 'Yes' : 'No'}
