@@ -1,5 +1,6 @@
 import pool from '../../lib/db.js'
 import { recalculateProfitSplit } from '../../lib/profit-calc.js'
+import { recalculateReimbursements } from '../../lib/reimbursement-calc.js'
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -36,6 +37,7 @@ export default async function handler(req, res) {
         [event_id, paid_by, category, amount, date, description, receipt_url, is_reimbursable]
       )
       await recalculateProfitSplit(pool, event_id)
+      await recalculateReimbursements(pool, event_id)
       res.status(201).json(result.rows[0])
     } catch (err) {
       res.status(500).json({ error: err.message })
@@ -53,6 +55,7 @@ export default async function handler(req, res) {
         [event_id, paid_by, category, amount, date, description, receipt_url, is_reimbursable, id]
       )
       await recalculateProfitSplit(pool, event_id)
+      await recalculateReimbursements(pool, event_id)
       res.status(200).json(result.rows[0])
     } catch (err) {
       res.status(500).json({ error: err.message })
@@ -62,13 +65,15 @@ export default async function handler(req, res) {
   else if (req.method === 'DELETE') {
     const { id } = req.body
     try {
-      // fetch event_id before deleting so we know what to recalculate
       const existing = await pool.query('SELECT event_id FROM expenses WHERE id=$1', [id])
       const eventId = existing.rows[0]?.event_id
 
       await pool.query('DELETE FROM expenses WHERE id=$1', [id])
 
-      if (eventId) await recalculateProfitSplit(pool, eventId)
+      if (eventId) {
+        await recalculateProfitSplit(pool, eventId)
+        await recalculateReimbursements(pool, eventId)
+      }
       res.status(200).json({ message: 'Expense deleted' })
     } catch (err) {
       res.status(500).json({ error: err.message })
