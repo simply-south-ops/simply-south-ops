@@ -89,6 +89,16 @@ export default async function handler(req, res) {
           id
         ]
       )
+
+      // if the event is now marked fully paid, flip any linked invoices
+      // to 'paid' too — keeps event and invoice status from drifting apart
+      if (is_paid) {
+        await pool.query(
+          `UPDATE invoices SET status='paid' WHERE event_id=$1 AND status != 'paid'`,
+          [id]
+        )
+      }
+
       await recalculateProfitSplit(pool, id)
       res.status(200).json(result.rows[0])
     } catch (err) {
